@@ -58,10 +58,11 @@
   </head>
   <body>
     <ul id="messages"></ul>
-    <form id="form" action="">
+    <form id="form" action="/send">
       <input id="input" autocomplete="off" /><button>Send</button>
     </form>
-    <script src="https://cdn.socket.io/4.8.1/socket.io.min.j"></script>
+    <script src="./src/Chat/Messages.js" type="application/json"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
     </script>
