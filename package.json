@@ -19,8 +19,11 @@
   },
   "homepage": "https://github.com/Mahtte94/LiveChat#readme",
   "dependencies": {
+    "@socket.io/cluster-adapter": "^0.2.2",
     "express": "^4.21.2",
     "socket.io": "^4.8.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "websocket": "^1.0.35"
   }
 }
