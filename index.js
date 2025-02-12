@@ -3,7 +3,6 @@ import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Server } from "socket.io";
-import messageRouter from "./src/Chat/Messages.js";
 
 const app = express();
 const port = 3000;
@@ -16,14 +15,13 @@ app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "index.html"));
 });
 
-app.use("/send", messageRouter);
-
 io.on("connection", (socket) => {
-  console.log("a user connected");
-  socket.on("disconnect", () => {
-    console.log("user disconnected");
+  socket.on("chat message", (msg) => {
+  io.emit("chat message", msg);
+  console.log("message: " + msg);
   });
 });
+
 
 server.listen(port, () => {
   console.log("Server Running");
