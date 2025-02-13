@@ -4,10 +4,12 @@
   "description": "",
   "type": "module",
   "main": "api/index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon api/index.js"
-  },
+  
+    "scripts": {
+      "start": "node api/index.js",
+      "dev": "nodemon api/index.js"
+    },
+  
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Mahtte94/LiveChat.git"

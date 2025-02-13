@@ -15,14 +15,13 @@ app.use(express.static("public"));
 // Configure CORS for Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: "*", // More permissive for testing
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.CLIENT_URL // You'll set this in Railway
+        : "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true,
   },
-  allowEIO3: true,
-  transports: ["polling", "websocket"],
-  pingTimeout: 60000,
-  pingInterval: 25000,
 });
 
 const MONGO_URL = process.env.MONGO_URL;
@@ -102,6 +101,11 @@ if (process.env.NODE_ENV !== "production") {
   const port = process.env.PORT || 3000;
   server.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
+  });
+} else {
+  const port = process.env.PORT || 3000;
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on port ${port}`);
   });
 }
 
