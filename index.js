@@ -1,14 +1,15 @@
-import express from 'express';
-import { createServer } from 'node:http';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-import { Server } from 'socket.io';
-import { MongoClient } from 'mongodb';
-import { createAdapter as createMongoAdapter } from '@socket.io/mongo-adapter';
+import express from "express";
+import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { Server } from "socket.io";
+import { MongoClient } from "mongodb";
+import { createAdapter as createMongoAdapter } from "@socket.io/mongo-adapter";
 
-const MONGO_URL = 'mongodb+srv://mahjeb0518:XN4cOm1u7Mj7xU0H@democluster.x4sk2.mongodb.net/?retryWrites=true&w=majority&appName=DemoCluster';
-const DB_NAME = 'chatdb';
-const COLLECTION = 'messages';
+const MONGO_URL =
+  "mongodb+srv://mahjeb0518:XN4cOm1u7Mj7xU0H@democluster.x4sk2.mongodb.net/?retryWrites=true&w=majority&appName=DemoCluster";
+const DB_NAME = "chatdb";
+const COLLECTION = "messages";
 
 const app = express();
 const server = createServer(app);
@@ -17,73 +18,90 @@ const io = new Server(server);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function main() {
-    console.log('Debug: Starting server...');
-    
-    const mongoClient = new MongoClient(MONGO_URL);
-    await mongoClient.connect();
-    console.log('Debug: MongoDB connected');
+  console.log("Debug: Starting server...");
 
-    const db = mongoClient.db(DB_NAME);
-    const collection = db.collection(COLLECTION);
-    
-    // Create index
-    await collection.createIndex({ client_offset: 1 }, { unique: true });
-    console.log('Debug: MongoDB index created');
+  const mongoClient = new MongoClient(MONGO_URL);
+  await mongoClient.connect();
+  console.log("Debug: MongoDB connected");
 
-    // Set up Socket.IO adapter
-    io.adapter(createMongoAdapter(collection));
+  const db = mongoClient.db(DB_NAME);
+  const collection = db.collection(COLLECTION);
+  const mongoCollection = db.collection(COLLECTION);
+  await io.adapter(
+    createMongoAdapter(mongoCollection, {
+      addCreatedAtField: true,
+    })
+  );
+  // Create index
+  await collection.createIndex({ client_offset: 1 }, { unique: true });
+  console.log("Debug: MongoDB index created");
 
-    app.get('/', (req, res) => {
-        res.sendFile(join(__dirname, 'index.html'));
-    });
+  // Set up Socket.IO adapter
+  io.adapter(createMongoAdapter(collection));
 
-    io.on('connection', async (socket) => {
-        console.log('Debug: Client connected');
+  app.get("/", (req, res) => {
+    res.sendFile(join(__dirname, "index.html"));
+  });
 
-        socket.on('chat message', async (msg, clientOffset, callback) => {
-            console.log('Debug: Received chat message:', msg);
-            
-            try {
-                await collection.insertOne({
-                    content: msg,
-                    client_offset: clientOffset,
-                    timestamp: new Date()
-                });
+  io.on("connection", async (socket) => {
+    console.log("Debug: Client connected");
 
-                console.log('Debug: Message saved to DB');
-                io.emit('chat message', msg);
-                console.log('Debug: Message broadcast to clients');
-                
-                if (callback) callback();
-            } catch (e) {
-                console.error('Debug: Error handling message:', e);
-                if (e.code === 11000) { // Duplicate key error
-                    if (callback) callback();
-                }
-            }
+    socket.on("chat message", async (msg, clientOffset, callback) => {
+      try {
+        await collection.insertOne({
+          content: msg,
+          client_offset: clientOffset,
+          timestamp: new Date(),
         });
 
-        // Load recent messages
-        try {
-            const messages = await collection
-                .find()
-                .sort({ timestamp: -1 })
-                .limit(50)
-                .toArray();
+        // Broadcast to all clients including sender
+        io.emit("chat message", msg);
 
-            console.log(`Debug: Sending ${messages.length} recent messages`);
-            messages.reverse().forEach(msg => {
-                socket.emit('chat message', msg.content);
-            });
-        } catch (e) {
-            console.error('Debug: Error loading messages:', e);
+        // Alternative: Broadcast to sender and others separately
+        // socket.emit('chat message', msg); // to sender
+        // socket.broadcast.emit('chat message', msg); // to everyone else
+
+        if (callback) callback();
+      } catch (e) {
+        console.error("Debug: Error handling message:", e);
+        if (e.code === 11000) {
+          if (callback) callback();
         }
+      }
     });
 
-    const port = process.env.PORT || 3000;
-    server.listen(port, () => {
-        console.log(`Server running at http://localhost:${port}`);
+    io.on("connection", async (socket) => {
+      // Notify others when someone is typing
+      socket.on("typing", () => {
+        socket.broadcast.emit("user typing", socket.id);
+      });
+
+      socket.on("stop typing", () => {
+        socket.broadcast.emit("user stopped typing", socket.id);
+      });
     });
+
+    // Load recent messages
+    try {
+      const messages = await collection
+        .find()
+        .sort({ timestamp: -1 })
+        .limit(50)
+        .toArray();
+
+      console.log(`Debug: Sending ${messages.length} recent messages`);
+      messages.reverse().forEach((msg) => {
+        socket.emit("chat message", msg.content);
+      });
+    } catch (e) {
+      console.error("Debug: Error loading messages:", e);
+    }
+  });
+
+  const port = process.env.PORT || 3000;
+  server.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
 }
 
 main().catch(console.error);
