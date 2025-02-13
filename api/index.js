@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 import { MongoClient } from "mongodb";
 import { createAdapter } from "@socket.io/mongo-adapter";
+import "dotenv/config";
 
 const app = express();
 const server = createServer(app);
@@ -24,6 +25,7 @@ const io = new Server(server, {
 const MONGO_URL = process.env.MONGO_URL;
 const DB_NAME = "chatdb";
 const COLLECTION = "messages";
+console.log(`${MONGO_URL} <- MONGO_URL`);
 
 async function main() {
   console.log("Debug: Starting server...");

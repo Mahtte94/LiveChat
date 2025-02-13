@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "main": "api/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "start": "nodemon api/index.js"
   },
   "repository": {
     "type": "git",
@@ -21,6 +21,7 @@
   "dependencies": {
     "@socket.io/cluster-adapter": "^0.2.2",
     "@socket.io/mongo-adapter": "^0.3.2",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "mongodb": "^6.13.0",
     "socket.io": "^4.8.1",
