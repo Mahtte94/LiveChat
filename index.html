@@ -29,7 +29,7 @@
         ackTimeout: 10000,
         retries: 3,
         auth: {
-          serverOffset: 0
+          serverOffset: '000000000000000000000000'
         }
       });
   
@@ -52,7 +52,17 @@
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
         socket.auth.serverOffset = serverOffset;
+
+        if (serverOffset) {
+                socket.auth.serverOffset = serverOffset.toString();
+            }
       });
+
+      socket.on('connect_error', (err) => {
+            console.log('Connection error:', err);
+        });
+
+      
     </script>
   </body>
 </html>
