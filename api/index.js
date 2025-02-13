@@ -10,6 +10,7 @@ import "dotenv/config";
 const app = express();
 const server = createServer(app);
 const __dirname = dirname(fileURLToPath(import.meta.url));
+app.use(express.static("public"));
 
 // Configure CORS for Socket.IO
 const io = new Server(server, {
