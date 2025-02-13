@@ -15,12 +15,16 @@ app.use(express.static("public"));
 // Configure CORS for Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: process.env.VERCEL_URL || "http://localhost:3000",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? [process.env.VERCEL_URL, "https://live-chat-weld-six.vercel.app"]
+        : "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true,
+    transports: ["websocket", "polling"],
   },
   allowEIO3: true,
-  transports: ["websocket", "polling"],
+  path: "/socket.io/",
 });
 
 const MONGO_URL = process.env.MONGO_URL;
