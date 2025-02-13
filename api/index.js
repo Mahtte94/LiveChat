@@ -25,7 +25,6 @@ const io = new Server(server, {
 const MONGO_URL = process.env.MONGO_URL;
 const DB_NAME = "chatdb";
 const COLLECTION = "messages";
-console.log(`${MONGO_URL} <- MONGO_URL`);
 
 async function main() {
   console.log("Debug: Starting server...");
@@ -45,7 +44,7 @@ async function main() {
   io.adapter(createAdapter(collection));
 
   app.get("/", (req, res) => {
-    res.sendFile(join(__dirname, "index.html"));
+    res.sendFile(join(__dirname, "../public/index.html"));
   });
 
   io.on("connection", async (socket) => {
