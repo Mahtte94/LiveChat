@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>Socket.IO chat 11:48</title>
+    <title>Socket.IO chat 12:46</title>
     <style>
       body {
         margin: 0;
@@ -48,6 +48,7 @@
       }
       #messages > li {
         padding: 0.5rem 1rem;
+        transition: opacity 0.3s ease;
       }
       #messages > li:nth-child(odd) {
         background: #efefef;
@@ -55,32 +56,48 @@
       .pending {
         opacity: 0.5;
       }
-      #messages > li {
-        padding: 0.5rem 1rem;
-        transition: opacity 0.3s ease;
+      #typing-indicator {
+        position: fixed;
+        bottom: 3.5rem;
+        left: 1rem;
+        color: #666;
+        font-style: italic;
       }
     </style>
+    <!-- Use Socket.IO CDN -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   </head>
   <body>
     <ul id="messages"></ul>
+    <div id="typing-indicator" style="display: none"></div>
     <form id="form" action="">
       <input id="input" autocomplete="off" /><button>Send</button>
     </form>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
     <script>
-      // Initialize socket
-      const socket = io();
-      console.log("Debug: Socket initialized");
+      // Initialize socket with configuration for Vercel
+      const socket = io({
+        path: "/socket.io/",
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
       // Get DOM elements
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");
+      const typingIndicator = document.getElementById("typing-indicator");
       let counter = 0;
 
       // Connection handling
       socket.on("connect", () => {
         console.log("Debug: Connected to server");
+      });
+
+      socket.on("connect_error", (error) => {
+        console.error("Connection error:", error);
       });
 
       // Message handling
@@ -112,12 +129,10 @@
         }
       });
 
-      // Update your client-side message handling code:
       socket.on("chat message", (msg) => {
-        console.log("Debug: Raw message received:", msg); // Debug the received message
+        console.log("Debug: Received message:", msg);
 
         const item = document.createElement("li");
-
         // Handle both string messages and message objects
         if (msg === null || msg === undefined) {
           console.error("Received null or undefined message");
@@ -133,6 +148,8 @@
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
       });
+
+      // Typing indicator
       let typingTimer;
       input.addEventListener("input", () => {
         clearTimeout(typingTimer);
@@ -143,12 +160,6 @@
         }, 1000);
       });
 
-      // Show typing indicator
-      const typingIndicator = document.createElement("div");
-      typingIndicator.id = "typing-indicator";
-      typingIndicator.style.display = "none";
-      document.body.appendChild(typingIndicator);
-
       socket.on("user typing", (userId) => {
         typingIndicator.textContent = "Someone is typing...";
         typingIndicator.style.display = "block";
@@ -157,11 +168,8 @@
       socket.on("user stopped typing", () => {
         typingIndicator.style.display = "none";
       });
-      // Error handling
-      socket.on("connect_error", (error) => {
-        console.log("Debug: Connection error -", error);
-      });
 
+      // Disconnection handling
       socket.on("disconnect", () => {
         console.log("Debug: Disconnected from server");
       });

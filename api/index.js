@@ -4,18 +4,26 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 import { MongoClient } from "mongodb";
-import { createAdapter as createMongoAdapter } from "@socket.io/mongo-adapter";
-
-const MONGO_URL =
-  "mongodb+srv://mahjeb0518:XN4cOm1u7Mj7xU0H@democluster.x4sk2.mongodb.net/?retryWrites=true&w=majority&appName=DemoCluster";
-const DB_NAME = "chatdb";
-const COLLECTION = "messages";
+import { createAdapter } from "@socket.io/mongo-adapter";
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server);
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Configure CORS for Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: process.env.VERCEL_URL || "http://localhost:3000",
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  allowEIO3: true,
+  transports: ["websocket", "polling"],
+});
+
+const MONGO_URL = process.env.MONGO_URL;
+const DB_NAME = "chatdb";
+const COLLECTION = "messages";
 
 async function main() {
   console.log("Debug: Starting server...");
@@ -26,18 +34,13 @@ async function main() {
 
   const db = mongoClient.db(DB_NAME);
   const collection = db.collection(COLLECTION);
-  const mongoCollection = db.collection(COLLECTION);
-  await io.adapter(
-    createMongoAdapter(mongoCollection, {
-      addCreatedAtField: true,
-    })
-  );
+
   // Create index
   await collection.createIndex({ client_offset: 1 }, { unique: true });
   console.log("Debug: MongoDB index created");
 
   // Set up Socket.IO adapter
-  io.adapter(createMongoAdapter(collection));
+  io.adapter(createAdapter(collection));
 
   app.get("/", (req, res) => {
     res.sendFile(join(__dirname, "index.html"));
@@ -47,38 +50,29 @@ async function main() {
     console.log("Debug: Client connected");
 
     socket.on("chat message", async (msg, clientOffset, callback) => {
+      console.log("Debug: Received chat message:", msg);
+
       try {
-        await collection.insertOne({
+        const messageDoc = {
           content: msg,
           client_offset: clientOffset,
           timestamp: new Date(),
-        });
+        };
 
-        // Broadcast to all clients including sender
-        io.emit("chat message", msg);
+        await collection.insertOne(messageDoc);
+        console.log("Debug: Message saved to DB");
 
-        // Alternative: Broadcast to sender and others separately
-        // socket.emit('chat message', msg); // to sender
-        // socket.broadcast.emit('chat message', msg); // to everyone else
+        io.emit("chat message", messageDoc);
+        console.log("Debug: Message broadcast to clients");
 
         if (callback) callback();
       } catch (e) {
         console.error("Debug: Error handling message:", e);
         if (e.code === 11000) {
+          // Duplicate key error
           if (callback) callback();
         }
       }
-    });
-
-    io.on("connection", async (socket) => {
-      // Notify others when someone is typing
-      socket.on("typing", () => {
-        socket.broadcast.emit("user typing", socket.id);
-      });
-
-      socket.on("stop typing", () => {
-        socket.broadcast.emit("user stopped typing", socket.id);
-      });
     });
 
     // Load recent messages
@@ -91,13 +85,16 @@ async function main() {
 
       console.log(`Debug: Sending ${messages.length} recent messages`);
       messages.reverse().forEach((msg) => {
-        socket.emit("chat message", msg.content);
+        socket.emit("chat message", msg);
       });
     } catch (e) {
       console.error("Debug: Error loading messages:", e);
     }
   });
+}
 
+// Start server for local development
+if (process.env.NODE_ENV !== "production") {
   const port = process.env.PORT || 3000;
   server.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
@@ -105,3 +102,6 @@ async function main() {
 }
 
 main().catch(console.error);
+
+// Export for Vercel
+export default app;
