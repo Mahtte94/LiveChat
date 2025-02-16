@@ -77,14 +77,7 @@
     <script>
       // Initialize socket with configuration for Vercel
       const socket = io("https://livechat-production-5ba7.up.railway.app/", {
-        path: "/socket.io/",
-        transports: ["websocket", "polling"], // Try polling first
-        upgrade: true,
-        rememberUpgrade: true,
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        timeout: 20000,
+        transports: ["websocket", "polling"],
       });
 
       // Add better error handling and logging
