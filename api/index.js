@@ -17,18 +17,13 @@ app.get("/", (req, res) => {
     res.sendFile(join(__dirname, "../public/index.html"));
 });
 
+// First create the Socket.IO server instance
 const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"],
         credentials: true,
         transports: ["websocket", "polling"]
-    },
-    adapter: {
-        // MongoDB adapter options
-        connectTimeoutMS: 5000,
-        pingTimeoutMS: 5000,
-        pingInterval: 2000
     }
 });
 
@@ -50,10 +45,13 @@ async function main() {
 
     // Create required indexes
     await collection.createIndex({ client_offset: 1 }, { unique: true });
-    await socketCollection.createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 });
-
-    // Setup Socket.IO MongoDB adapter
-    io.adapter(createAdapter(socketCollection));
+    
+    // Create the MongoDB adapter
+    const mongoAdapter = createAdapter(socketCollection);
+    
+    // Attach the adapter to Socket.IO
+    io.adapter(mongoAdapter);
+    console.log("Debug: MongoDB adapter attached to Socket.IO");
 
     io.on("connection", async (socket) => {
         console.log(`Debug: Client connected with ID: ${socket.id}`);
@@ -86,7 +84,7 @@ async function main() {
 
                 await collection.insertOne(messageData);
                 
-                // Broadcast to all clients using the MongoDB adapter
+                // Broadcast to all clients
                 io.emit("chat message", messageData);
                 
                 if (callback) callback();
