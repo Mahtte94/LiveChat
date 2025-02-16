@@ -1,7 +1,6 @@
+// index.js
 import express from "express";
 import { createServer } from "node:http";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 import { MongoClient } from "mongodb";
 import { createAdapter } from "@socket.io/mongo-adapter";
@@ -9,98 +8,96 @@ import "dotenv/config";
 
 const app = express();
 const server = createServer(app);
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
-
-// Configure CORS for Socket.IO
+// Configure Socket.IO with explicit CORS
 const io = new Server(server, {
-  cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-      transports: ["websocket", "polling"]
-  },
-  allowEIO3: true // Allow older Socket.IO clients
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+        credentials: true,
+        transports: ["websocket", "polling"]
+    }
 });
-
-
-app.use(express.static("public"));
 
 const MONGO_URL = process.env.MONGO_URL;
 const DB_NAME = "chatdb";
 const COLLECTION = "messages";
 
 async function main() {
-  console.log("Debug: Starting server...");
+    console.log("Debug: Starting server...");
 
-  const mongoClient = new MongoClient(MONGO_URL);
-  await mongoClient.connect();
-  console.log("Debug: MongoDB connected");
+    const mongoClient = new MongoClient(MONGO_URL);
+    await mongoClient.connect();
+    console.log("Debug: MongoDB connected");
 
-  const db = mongoClient.db(DB_NAME);
-  const collection = db.collection(COLLECTION);
+    const db = mongoClient.db(DB_NAME);
+    const collection = db.collection(COLLECTION);
 
-  // Create index
-  await collection.createIndex({ client_offset: 1 }, { unique: true });
-  console.log("Debug: MongoDB index created");
-
-  // Set up Socket.IO adapter
-  io.adapter(createAdapter(collection));
-
-  app.get("/", (req, res) => {
-    res.sendFile(join(__dirname, "../public/index.html"));
-  });
-
-  io.on("connection", async (socket) => {
-    console.log(`Debug: Client connected with ID: ${socket.id}`);
+    await collection.createIndex({ client_offset: 1 }, { unique: true });
     
-    // Log all connected clients
-    const connectedClients = Array.from(io.sockets.sockets.keys());
-    console.log(`Debug: Connected clients: ${connectedClients.length}`, connectedClients);
+    io.on("connection", async (socket) => {
+        console.log(`Debug: Client connected with ID: ${socket.id}`);
 
-    socket.on("chat message", async (msg, clientOffset, callback) => {
+        // Load existing messages for new client
         try {
-            console.log(`Debug: Received message from ${socket.id}:`, msg);
-            
-            const messageData = {
-                content: msg,
-                client_offset: clientOffset || `${socket.id}-${Date.now()}`,
-                timestamp: new Date(),
-                sender: socket.id
-            };
+            const messages = await collection
+                .find()
+                .sort({ timestamp: -1 })
+                .limit(50)
+                .toArray();
 
-            await db.collection("messages").insertOne(messageData);
-            
-            // Log broadcast attempt
-            console.log(`Debug: Broadcasting message to all clients:`, messageData);
-            io.emit("chat message", messageData);
-            
-            console.log(`Debug: Number of clients that should receive message: ${io.engine.clientsCount}`);
-
-            if (callback) {
-                callback();
-                console.log('Debug: Message acknowledgment sent to sender');
-            }
-        } catch (error) {
-            console.error("Error handling message:", error);
+            console.log(`Debug: Sending ${messages.length} recent messages to ${socket.id}`);
+            messages.reverse().forEach((msg) => {
+                socket.emit("chat message", msg);
+            });
+        } catch (e) {
+            console.error("Debug: Error loading messages:", e);
         }
+
+        // Handle new messages
+        socket.on("chat message", async (msg, clientOffset, callback) => {
+            try {
+                console.log(`Debug: New message from ${socket.id}:`, msg);
+                
+                const messageData = {
+                    content: msg,
+                    client_offset: clientOffset || `${socket.id}-${Date.now()}`,
+                    timestamp: new Date(),
+                    sender: socket.id
+                };
+
+                await collection.insertOne(messageData);
+                
+                // Broadcast to ALL clients including sender
+                console.log("Debug: Broadcasting message to all clients");
+                io.emit("chat message", messageData);
+                
+                if (callback) callback();
+                
+            } catch (error) {
+                console.error("Error handling message:", error);
+                if (callback) callback(error);
+            }
+        });
+
+        socket.on("disconnect", () => {
+            console.log(`Debug: Client disconnected: ${socket.id}`);
+        });
     });
-});
 }
 
-// Start server for local development
 if (process.env.NODE_ENV !== "production") {
-  const port = process.env.PORT || 3000;
-  server.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-  });
+    const port = process.env.PORT || 3000;
+    server.listen(port, () => {
+        console.log(`Server running at http://localhost:${port}`);
+    });
 } else {
-  const port = process.env.PORT || 3000;
-  server.listen(port, "0.0.0.0", () => {
-    console.log(`Server running on port ${port}`);
-  });
+    const port = process.env.PORT || 8080;
+    server.listen(port, "0.0.0.0", () => {
+        console.log(`Server running on port ${port}`);
+    });
 }
 
 main().catch(console.error);
 
-// Export for Vercel
 export default app;

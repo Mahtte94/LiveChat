@@ -4,61 +4,13 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>Socket.IO chat</title>
     <style>
-      body {
-        margin: 0;
-        padding-bottom: 3rem;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Helvetica, Arial, sans-serif;
-      }
-      #form {
-        background: rgba(0, 0, 0, 0.15);
-        padding: 0.25rem;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        height: 3rem;
-        box-sizing: border-box;
-        backdrop-filter: blur(10px);
-      }
-      #input {
-        border: none;
-        padding: 0 1rem;
-        flex-grow: 1;
-        border-radius: 2rem;
-        margin: 0.25rem;
-      }
-      #input:focus {
-        outline: none;
-      }
-      #form > button {
-        background: #333;
-        border: none;
-        padding: 0 1rem;
-        margin: 0.25rem;
-        border-radius: 3px;
-        outline: none;
-        color: #fff;
-      }
-      #messages {
-        list-style-type: none;
-        margin: 0;
-        padding: 0;
-      }
-      #messages > li {
-        padding: 0.5rem 1rem;
-        transition: opacity 0.3s ease;
-      }
-      #messages > li:nth-child(odd) {
-        background: #efefef;
-      }
-      .pending {
-        opacity: 0.5;
-      }
+      /* ... (keep existing styles) ... */
       .own-message {
         background: #e3f2fd !important;
         text-align: right;
+      }
+      .other-message {
+        background: #f5f5f5;
       }
     </style>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
@@ -70,75 +22,71 @@
     </form>
 
     <script>
+      // Initialize socket with both transport options
       const socket = io("https://livechat-production-5ba7.up.railway.app", {
         transports: ["websocket", "polling"],
-        reconnectionDelay: 1000,
-        reconnection: true
+        reconnection: true,
+        reconnectionAttempts: 5
       });
 
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");
-      let counter = 0;
 
-      // Connection status logging
+      // Connection event handlers
       socket.on("connect", () => {
         console.log("Connected to server with ID:", socket.id);
+        messages.innerHTML = ''; // Clear messages on reconnect
       });
 
       socket.on("disconnect", () => {
         console.log("Disconnected from server");
       });
 
-      // Handle incoming messages
+      socket.on("connect_error", (error) => {
+        console.log("Connection error:", error);
+      });
+
+      // Message handler
       socket.on("chat message", (msg) => {
         console.log("Received message:", msg);
         
         const item = document.createElement("li");
         
-        // Handle both string and object messages
         if (typeof msg === 'string') {
           item.textContent = msg;
         } else if (msg && msg.content) {
-          item.textContent = msg.content;
+          item.textContent = `${msg.content}`;
+          
+          // Style based on sender
           if (msg.sender === socket.id) {
             item.classList.add("own-message");
+          } else {
+            item.classList.add("other-message");
           }
-        } else {
-          console.error("Invalid message format:", msg);
-          return;
         }
 
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
       });
 
-      // Handle message sending
+      // Form submission
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (input.value) {
           const clientOffset = `${socket.id}-${Date.now()}`;
-          const message = input.value;
-
-          // Show pending message
-          const item = document.createElement("li");
-          item.textContent = message;
-          item.classList.add("pending", "own-message");
-          item.dataset.messageId = clientOffset;
-          messages.appendChild(item);
-
-          // Send message
-          socket.emit("chat message", message, clientOffset, () => {
-            const pendingMessage = document.querySelector(
-              `[data-message-id="${clientOffset}"]`
-            );
-            if (pendingMessage) {
-              pendingMessage.classList.remove("pending");
+          
+          console.log("Sending message:", input.value);
+          
+          socket.emit("chat message", input.value, clientOffset, (error) => {
+            if (error) {
+              console.error("Error sending message:", error);
+              return;
             }
+            console.log("Message sent successfully");
           });
 
           input.value = "";
-          window.scrollTo(0, document.body.scrollHeight);
         }
       });
     </script>
