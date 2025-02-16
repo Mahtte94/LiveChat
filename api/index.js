@@ -51,46 +51,39 @@ async function main() {
   });
 
   io.on("connection", async (socket) => {
-    console.log("Debug: Client connected");
+    console.log(`Debug: Client connected with ID: ${socket.id}`);
+    
+    // Log all connected clients
+    const connectedClients = Array.from(io.sockets.sockets.keys());
+    console.log(`Debug: Connected clients: ${connectedClients.length}`, connectedClients);
 
     socket.on("chat message", async (msg, clientOffset, callback) => {
         try {
-            if (!clientOffset) {
-                clientOffset = `${socket.id}-${Date.now()}`;
-            }
-
+            console.log(`Debug: Received message from ${socket.id}:`, msg);
+            
             const messageData = {
                 content: msg,
-                client_offset: clientOffset,
+                client_offset: clientOffset || `${socket.id}-${Date.now()}`,
                 timestamp: new Date(),
                 sender: socket.id
             };
 
             await db.collection("messages").insertOne(messageData);
-            // Emit the full message data instead of just the string
+            
+            // Log broadcast attempt
+            console.log(`Debug: Broadcasting message to all clients:`, messageData);
             io.emit("chat message", messageData);
+            
+            console.log(`Debug: Number of clients that should receive message: ${io.engine.clientsCount}`);
 
-            if (callback) callback();
+            if (callback) {
+                callback();
+                console.log('Debug: Message acknowledgment sent to sender');
+            }
         } catch (error) {
             console.error("Error handling message:", error);
         }
     });
-
-    // Load recent messages
-    try {
-        const messages = await collection
-            .find()
-            .sort({ timestamp: -1 })
-            .limit(50)
-            .toArray();
-
-        console.log(`Debug: Sending ${messages.length} recent messages`);
-        messages.reverse().forEach((msg) => {
-            socket.emit("chat message", msg);
-        });
-    } catch (e) {
-        console.error("Debug: Error loading messages:", e);
-    }
 });
 }
 
