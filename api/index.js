@@ -15,11 +15,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Configure CORS for Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    credentials: true,
+      origin: "*",
+      methods: ["GET", "POST"],
+      transports: ["websocket", "polling"]
   },
+  allowEIO3: true // Allow older Socket.IO clients
 });
+
 
 app.use(express.static("public"));
 
