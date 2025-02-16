@@ -54,30 +54,26 @@ async function main() {
     console.log("Debug: Client connected");
 
     socket.on("chat message", async (msg, clientOffset, callback) => {
-      console.log("Debug: Received chat message:", msg);
-
       try {
-        const messageDoc = {
-          content: msg,
-          client_offset: clientOffset,
-          timestamp: new Date(),
-        };
-
-        await collection.insertOne(messageDoc);
-        console.log("Debug: Message saved to DB");
-
-        io.emit("chat message", messageDoc);
-        console.log("Debug: Message broadcast to clients");
-
-        if (callback) callback();
-      } catch (e) {
-        console.error("Debug: Error handling message:", e);
-        if (e.code === 11000) {
-          // Duplicate key error
-          if (callback) callback();
-        }
+          if (!clientOffset) {
+              clientOffset = `${socket.id}-${Date.now()}`; // Generate unique offset if missing
+          }
+  
+          const messageData = {
+              content: msg,
+              client_offset: clientOffset, // Ensure it's always unique
+              timestamp: new Date(),
+          };
+  
+          await db.collection("messages").insertOne(messageData); // Save to MongoDB
+          io.emit("chat message", msg); // Broadcast to all clients
+  
+          if (callback) callback(); // Confirm receipt
+      } catch (error) {
+          console.error("Error handling message:", error);
       }
-    });
+  });
+  
 
     // Load recent messages
     try {
