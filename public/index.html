@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>Socket.IO chat 13:03</title>
+    <title>Socket.IO chat</title>
     <style>
       body {
         margin: 0;
@@ -56,125 +56,90 @@
       .pending {
         opacity: 0.5;
       }
-      #typing-indicator {
-        position: fixed;
-        bottom: 3.5rem;
-        left: 1rem;
-        color: #666;
-        font-style: italic;
+      .own-message {
+        background: #e3f2fd !important;
+        text-align: right;
       }
     </style>
-    <!-- Use Socket.IO CDN -->
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   </head>
   <body>
     <ul id="messages"></ul>
-    <div id="typing-indicator" style="display: none"></div>
     <form id="form" action="">
       <input id="input" autocomplete="off" /><button>Send</button>
     </form>
 
     <script>
-      const socket = io("https://livechat-production-5ba7.up.railway.app/", {
+      const socket = io("https://livechat-production-5ba7.up.railway.app", {
         transports: ["websocket", "polling"],
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        reconnection: true,
+        reconnection: true
       });
 
-      // Get DOM elements
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");
-      const typingIndicator = document.getElementById("typing-indicator");
       let counter = 0;
 
-      // Enhanced connection logging
+      // Connection status logging
       socket.on("connect", () => {
-        console.log(`Debug: Connected to server with ID: ${socket.id}`);
-        console.log(
-          `Debug: Transport used: ${socket.io.engine.transport.name}`
-        );
+        console.log("Connected to server with ID:", socket.id);
       });
 
-      socket.on("disconnect", (reason) => {
-        console.log(`Debug: Disconnected from server. Reason: ${reason}`);
+      socket.on("disconnect", () => {
+        console.log("Disconnected from server");
       });
 
-      socket.on("reconnect_attempt", (attemptNumber) => {
-        console.log(
-          `Debug: Attempting to reconnect... Attempt #${attemptNumber}`
-        );
-      });
-
+      // Handle incoming messages
       socket.on("chat message", (msg) => {
-        console.log("Debug: Received message:", msg);
-        console.log(
-          `Debug: Message sender ID: ${msg.sender}, My ID: ${socket.id}`
-        );
-
+        console.log("Received message:", msg);
+        
         const item = document.createElement("li");
-
-        if (!msg) {
-          console.error("Received null or undefined message");
+        
+        // Handle both string and object messages
+        if (typeof msg === 'string') {
+          item.textContent = msg;
+        } else if (msg && msg.content) {
+          item.textContent = msg.content;
+          if (msg.sender === socket.id) {
+            item.classList.add("own-message");
+          }
+        } else {
+          console.error("Invalid message format:", msg);
           return;
-        }
-
-        const messageContent = msg.content || msg;
-        item.textContent = messageContent;
-
-        // Add visual indication for own messages
-        if (msg.sender === socket.id) {
-          item.style.backgroundColor = "#e1f5fe";
-          item.style.textAlign = "right";
         }
 
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
       });
 
-      // Update form submission
+      // Handle message sending
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (input.value) {
           const clientOffset = `${socket.id}-${Date.now()}`;
           const message = input.value;
 
-          console.log(`Debug: Sending message with offset: ${clientOffset}`);
+          // Show pending message
+          const item = document.createElement("li");
+          item.textContent = message;
+          item.classList.add("pending", "own-message");
+          item.dataset.messageId = clientOffset;
+          messages.appendChild(item);
 
+          // Send message
           socket.emit("chat message", message, clientOffset, () => {
-            console.log("Debug: Server acknowledged message receipt");
+            const pendingMessage = document.querySelector(
+              `[data-message-id="${clientOffset}"]`
+            );
+            if (pendingMessage) {
+              pendingMessage.classList.remove("pending");
+            }
           });
 
           input.value = "";
+          window.scrollTo(0, document.body.scrollHeight);
         }
-      });
-
-      
-
-      // Typing indicator
-      let typingTimer;
-      input.addEventListener("input", () => {
-        clearTimeout(typingTimer);
-        socket.emit("typing");
-
-        typingTimer = setTimeout(() => {
-          socket.emit("stop typing");
-        }, 1000);
-      });
-
-      socket.on("user typing", (userId) => {
-        typingIndicator.textContent = "Someone is typing...";
-        typingIndicator.style.display = "block";
-      });
-
-      socket.on("user stopped typing", () => {
-        typingIndicator.style.display = "none";
-      });
-
-      // Disconnection handling
-      socket.on("disconnect", () => {
-        console.log("Debug: Disconnected from server");
       });
     </script>
   </body>
