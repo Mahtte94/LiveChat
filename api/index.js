@@ -10,19 +10,18 @@ import "dotenv/config";
 const app = express();
 const server = createServer(app);
 const __dirname = dirname(fileURLToPath(import.meta.url));
-app.use(express.static("public"));
+
 
 // Configure CORS for Socket.IO
 const io = new Server(server, {
   cors: {
-    origin:
-      process.env.NODE_ENV === "production"
-        ? process.env.CLIENT_URL // You'll set this in Railway
-        : "http://localhost:3000",
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
+
+app.use(express.static("public"));
 
 const MONGO_URL = process.env.MONGO_URL;
 const DB_NAME = "chatdb";

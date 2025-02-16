@@ -76,9 +76,9 @@
 
     <script>
       // Initialize socket with configuration for Vercel
-      const socket = io({
+      const socket = io("https://livechat-production-5ba7.up.railway.app/", {
         path: "/socket.io/",
-        transports: ["websocket"], // Try polling first
+        transports: ["websocket", "polling"], // Try polling first
         upgrade: true,
         rememberUpgrade: true,
         reconnection: true,
