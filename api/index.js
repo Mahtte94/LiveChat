@@ -1,6 +1,7 @@
-// index.js
 import express from "express";
 import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 import { MongoClient } from "mongodb";
 import { createAdapter } from "@socket.io/mongo-adapter";
@@ -8,20 +9,33 @@ import "dotenv/config";
 
 const app = express();
 const server = createServer(app);
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Configure Socket.IO with explicit CORS
+// Serve static files
+app.use(express.static(join(__dirname, "../public")));
+app.get("/", (req, res) => {
+    res.sendFile(join(__dirname, "../public/index.html"));
+});
+
 const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"],
         credentials: true,
         transports: ["websocket", "polling"]
+    },
+    adapter: {
+        // MongoDB adapter options
+        connectTimeoutMS: 5000,
+        pingTimeoutMS: 5000,
+        pingInterval: 2000
     }
 });
 
 const MONGO_URL = process.env.MONGO_URL;
 const DB_NAME = "chatdb";
 const COLLECTION = "messages";
+const SOCKET_COLLECTION = "socket.io-adapter";
 
 async function main() {
     console.log("Debug: Starting server...");
@@ -32,13 +46,18 @@ async function main() {
 
     const db = mongoClient.db(DB_NAME);
     const collection = db.collection(COLLECTION);
+    const socketCollection = db.collection(SOCKET_COLLECTION);
 
+    // Create required indexes
     await collection.createIndex({ client_offset: 1 }, { unique: true });
-    
+    await socketCollection.createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 });
+
+    // Setup Socket.IO MongoDB adapter
+    io.adapter(createAdapter(socketCollection));
+
     io.on("connection", async (socket) => {
         console.log(`Debug: Client connected with ID: ${socket.id}`);
 
-        // Load existing messages for new client
         try {
             const messages = await collection
                 .find()
@@ -54,7 +73,6 @@ async function main() {
             console.error("Debug: Error loading messages:", e);
         }
 
-        // Handle new messages
         socket.on("chat message", async (msg, clientOffset, callback) => {
             try {
                 console.log(`Debug: New message from ${socket.id}:`, msg);
@@ -68,8 +86,7 @@ async function main() {
 
                 await collection.insertOne(messageData);
                 
-                // Broadcast to ALL clients including sender
-                console.log("Debug: Broadcasting message to all clients");
+                // Broadcast to all clients using the MongoDB adapter
                 io.emit("chat message", messageData);
                 
                 if (callback) callback();
@@ -86,17 +103,10 @@ async function main() {
     });
 }
 
-if (process.env.NODE_ENV !== "production") {
-    const port = process.env.PORT || 3000;
-    server.listen(port, () => {
-        console.log(`Server running at http://localhost:${port}`);
-    });
-} else {
-    const port = process.env.PORT || 8080;
-    server.listen(port, "0.0.0.0", () => {
-        console.log(`Server running on port ${port}`);
-    });
-}
+const port = process.env.PORT || 8080;
+server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on port ${port}`);
+});
 
 main().catch(console.error);
 
