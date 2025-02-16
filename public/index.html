@@ -107,54 +107,58 @@
         console.error("Connection error:", error);
       });
 
+      
+
       // Message handling
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (input.value) {
-          const clientOffset = `${socket.id}-${counter++}`;
-          const message = input.value;
+            const clientOffset = `${socket.id}-${counter++}`;
+            const message = input.value;
 
-          // Add message with pending status
-          const item = document.createElement("li");
-          item.textContent = message;
-          item.dataset.messageId = clientOffset;
-          item.classList.add("pending");
-          messages.appendChild(item);
+            // Add message with pending status
+            const item = document.createElement("li");
+            item.textContent = message;
+            item.dataset.messageId = clientOffset;
+            item.classList.add("pending");
+            messages.appendChild(item);
 
-          socket.emit("chat message", message, clientOffset, () => {
-            // Remove pending status when server confirms
-            const pendingMessage = document.querySelector(
-              `[data-message-id="${clientOffset}"]`
-            );
-            if (pendingMessage) {
-              pendingMessage.classList.remove("pending");
-            }
-          });
+            socket.emit("chat message", message, clientOffset, () => {
+                const pendingMessage = document.querySelector(
+                    `[data-message-id="${clientOffset}"]`
+                );
+                if (pendingMessage) {
+                    pendingMessage.classList.remove("pending");
+                }
+            });
 
-          input.value = "";
-          window.scrollTo(0, document.body.scrollHeight);
+            input.value = "";
+            window.scrollTo(0, document.body.scrollHeight);
         }
-      });
+    });
 
       socket.on("chat message", (msg) => {
         console.log("Debug: Received message:", msg);
 
         const item = document.createElement("li");
-        // Handle both string messages and message objects
-        if (msg === null || msg === undefined) {
-          console.error("Received null or undefined message");
-          return;
+        
+        if (!msg) {
+            console.error("Received null or undefined message");
+            return;
         }
 
-        if (typeof msg === "object") {
-          item.textContent = msg.content;
-        } else {
-          item.textContent = msg;
+        // Always treat incoming messages as objects
+        const messageContent = msg.content || msg;
+        item.textContent = messageContent;
+
+        // Add any additional styling or metadata display if needed
+        if (msg.sender === socket.id) {
+            item.classList.add("own-message");
         }
 
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
-      });
+    });
 
       // Typing indicator
       let typingTimer;

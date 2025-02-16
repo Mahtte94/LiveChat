@@ -54,43 +54,44 @@ async function main() {
     console.log("Debug: Client connected");
 
     socket.on("chat message", async (msg, clientOffset, callback) => {
-      try {
-          if (!clientOffset) {
-              clientOffset = `${socket.id}-${Date.now()}`; // Generate unique offset if missing
-          }
-  
-          const messageData = {
-              content: msg,
-              client_offset: clientOffset, // Ensure it's always unique
-              timestamp: new Date(),
-          };
-  
-          await db.collection("messages").insertOne(messageData); // Save to MongoDB
-          io.emit("chat message", msg); // Broadcast to all clients
-  
-          if (callback) callback(); // Confirm receipt
-      } catch (error) {
-          console.error("Error handling message:", error);
-      }
-  });
-  
+        try {
+            if (!clientOffset) {
+                clientOffset = `${socket.id}-${Date.now()}`;
+            }
+
+            const messageData = {
+                content: msg,
+                client_offset: clientOffset,
+                timestamp: new Date(),
+                sender: socket.id
+            };
+
+            await db.collection("messages").insertOne(messageData);
+            // Emit the full message data instead of just the string
+            io.emit("chat message", messageData);
+
+            if (callback) callback();
+        } catch (error) {
+            console.error("Error handling message:", error);
+        }
+    });
 
     // Load recent messages
     try {
-      const messages = await collection
-        .find()
-        .sort({ timestamp: -1 })
-        .limit(50)
-        .toArray();
+        const messages = await collection
+            .find()
+            .sort({ timestamp: -1 })
+            .limit(50)
+            .toArray();
 
-      console.log(`Debug: Sending ${messages.length} recent messages`);
-      messages.reverse().forEach((msg) => {
-        socket.emit("chat message", msg);
-      });
+        console.log(`Debug: Sending ${messages.length} recent messages`);
+        messages.reverse().forEach((msg) => {
+            socket.emit("chat message", msg);
+        });
     } catch (e) {
-      console.error("Debug: Error loading messages:", e);
+        console.error("Debug: Error loading messages:", e);
     }
-  });
+});
 }
 
 // Start server for local development
