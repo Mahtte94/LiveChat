@@ -3,66 +3,8 @@
   <head>
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>Socket.IO chat</title>
-    <style>
-      body {
-        margin: 0;
-        padding-bottom: 3rem;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Helvetica, Arial, sans-serif;
-      }
-      #form {
-        background: rgba(0, 0, 0, 0.15);
-        padding: 0.25rem;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        height: 3rem;
-        box-sizing: border-box;
-        backdrop-filter: blur(10px);
-      }
-      #input {
-        border: none;
-        padding: 0 1rem;
-        flex-grow: 1;
-        border-radius: 2rem;
-        margin: 0.25rem;
-      }
-      #input:focus {
-        outline: none;
-      }
-      #form > button {
-        background: #333;
-        border: none;
-        padding: 0 1rem;
-        margin: 0.25rem;
-        border-radius: 3px;
-        outline: none;
-        color: #fff;
-      }
-      #messages {
-        list-style-type: none;
-        margin: 0;
-        padding: 0;
-      }
-      #messages > li {
-        padding: 0.5rem 1rem;
-        transition: opacity 0.3s ease;
-      }
-      #messages > li:nth-child(odd) {
-        background: #efefef;
-      }
-
-      .own-message {
-        background: #e3f2fd !important;
-        text-align: right;
-      }
-      .other-message {
-        background: #f5f5f5;
-      }
-    </style>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="app.css" />
   </head>
   <body>
     <ul id="messages"></ul>
@@ -75,7 +17,7 @@
       const socket = io("https://livechat-production-5ba7.up.railway.app", {
         transports: ["websocket", "polling"],
         reconnection: true,
-        reconnectionAttempts: 5
+        reconnectionAttempts: 5,
       });
 
       const form = document.getElementById("form");
@@ -85,7 +27,7 @@
       // Connection event handlers
       socket.on("connect", () => {
         console.log("Connected to server with ID:", socket.id);
-        messages.innerHTML = ''; // Clear messages on reconnect
+        messages.innerHTML = ""; // Clear messages on reconnect
       });
 
       socket.on("disconnect", () => {
@@ -99,14 +41,14 @@
       // Message handler
       socket.on("chat message", (msg) => {
         console.log("Received message:", msg);
-        
+
         const item = document.createElement("li");
-        
-        if (typeof msg === 'string') {
+
+        if (typeof msg === "string") {
           item.textContent = msg;
         } else if (msg && msg.content) {
           item.textContent = `${msg.content}`;
-          
+
           // Style based on sender
           if (msg.sender === socket.id) {
             item.classList.add("own-message");
@@ -124,9 +66,9 @@
         e.preventDefault();
         if (input.value) {
           const clientOffset = `${socket.id}-${Date.now()}`;
-          
+
           console.log("Sending message:", input.value);
-          
+
           socket.emit("chat message", input.value, clientOffset, (error) => {
             if (error) {
               console.error("Error sending message:", error);
