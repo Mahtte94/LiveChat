@@ -99,6 +99,15 @@ adminRouter.get("/messages", async (req, res) => {
   const collection = mongoClient.db("chatdb").collection("messages");
 
   try {
+    // Get total count first
+    const total = await collection.countDocuments();
+    console.log("Total messages:", total); // Debug log
+
+    // Calculate total pages
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    console.log("Calculated total pages:", totalPages); // Debug log
+
+    // Get messages for current page
     const messages = await collection
       .find()
       .sort({ timestamp: -1 })
@@ -106,15 +115,19 @@ adminRouter.get("/messages", async (req, res) => {
       .limit(limit)
       .toArray();
 
-    const total = await collection.countDocuments();
+    console.log(
+      `Returning ${messages.length} messages for page ${page} of ${totalPages}`
+    ); // Debug log
 
     res.status(200).json({
       messages,
       total,
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages,
+      limit,
     });
   } catch (error) {
+    console.error("Error fetching messages:", error);
     res.status(500).json({ error: "Failed to fetch messages" });
   }
 });

@@ -54,11 +54,9 @@
       socket.on("chat message", (msg) => {
         console.log("New message received in admin:", msg);
 
-        // If we're on the first page, add the new message to the top
         if (currentPage === 1) {
           const messageList = document.getElementById("messageList");
 
-          // Create new message element
           const div = document.createElement("div");
           div.className = "message-item";
           div.innerHTML = `
@@ -73,17 +71,16 @@
             }')">Delete</button>
         `;
 
-          // Add it to the top of the list
           messageList.insertBefore(div, messageList.firstChild);
 
           // Remove the last message if we're at the limit
-          const limit = 50; // Match your page limit
+          const limit = 50;
           if (messageList.children.length > limit) {
             messageList.lastChild.remove();
           }
 
-          // Update total pages
-          fetchPaginationInfo();
+          // Fetch fresh pagination data with the current page's messages
+          fetchMessages(currentPage);
         }
       });
       let currentPage = 1;
@@ -91,15 +88,17 @@
 
       async function fetchMessages(page = 1) {
         try {
-          const response = await fetch(`/admin/messages?page=${page}`);
+          console.log("Fetching messages for page:", page); // Debug log
+          const response = await fetch(`/admin/messages?page=${page}&limit=50`);
           if (!response.ok) throw new Error("Failed to fetch messages");
           const data = await response.json();
+
+          console.log("Received data:", data); // Debug log
 
           const messageList = document.getElementById("messageList");
           messageList.innerHTML = "";
 
           data.messages.forEach((msg) => {
-            console.log("Rendering message with ID:", msg._id);
             const div = document.createElement("div");
             div.className = "message-item";
             div.innerHTML = `
@@ -116,25 +115,14 @@
             messageList.appendChild(div);
           });
 
-          currentPage = data.page;
-          totalPages = data.totalPages;
+          currentPage = page;
+          totalPages = Math.max(1, data.totalPages); // Ensure at least 1 page
+          console.log("Updated pagination:", { currentPage, totalPages }); // Debug log
+
           updatePagination();
         } catch (error) {
           console.error("Error fetching messages:", error);
           alert("Failed to fetch messages: " + error.message);
-        }
-      }
-
-      async function fetchPaginationInfo() {
-        try {
-          const response = await fetch(`/admin/messages?page=1&limit=1`);
-          if (!response.ok) throw new Error("Failed to fetch pagination info");
-          const data = await response.json();
-
-          totalPages = data.totalPages;
-          updatePagination();
-        } catch (error) {
-          console.error("Error updating pagination:", error);
         }
       }
 
@@ -213,7 +201,6 @@
       socket.onAny((eventName, ...args) => {
         console.log("Received event:", eventName, "with args:", args);
       });
-      fetchMessages();
     </script>
   </body>
 </html>
