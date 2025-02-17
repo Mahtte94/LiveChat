@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Chat Admin Panel</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="./admin.css" />
+  </head>
+  <body>
+    <div class="header">
+      <h1>Chat Admin Panel</h1>
+      <div class="danger-zone">
+        <button id="clearAll" class="clear-all-btn">Clear All Messages</button>
+      </div>
+    </div>
+
+    <div id="messageList" class="message-list"></div>
+    <div id="pagination" class="pagination"></div>
+
+    <script>
+      const socket = io(window.location.origin, {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+      });
+
+      // Handle single message deletion
+      socket.on("message deleted", (messageId) => {
+        console.log("Message deleted:", messageId);
+        // Refresh the current page of messages
+        fetchMessages(currentPage);
+      });
+
+      // Handle all messages being cleared
+      socket.on("messages cleared", () => {
+        console.log("All messages cleared");
+        // Reset to first page and refresh
+        currentPage = 1;
+        fetchMessages(1);
+      });
+
+      // Handle connection events
+      socket.on("connect", () => {
+        console.log("Connected to server with ID:", socket.id);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Disconnected from server");
+      });
+
+      socket.on("connect_error", (error) => {
+        console.log("Connection error:", error);
+      });
+      socket.on("chat message", (msg) => {
+        console.log("New message received in admin:", msg);
+
+        // If we're on the first page, add the new message to the top
+        if (currentPage === 1) {
+          const messageList = document.getElementById("messageList");
+
+          // Create new message element
+          const div = document.createElement("div");
+          div.className = "message-item";
+          div.innerHTML = `
+            <div>
+                <strong>${new Date(msg.timestamp).toLocaleString()}</strong>
+                <p>${msg.content}</p>
+                <small>Sender: ${msg.sender}</small>
+                <small>ID: ${msg._id}</small>
+            </div>
+            <button class="delete-btn" onclick="deleteMessage('${
+              msg._id
+            }')">Delete</button>
+        `;
+
+          // Add it to the top of the list
+          messageList.insertBefore(div, messageList.firstChild);
+
+          // Remove the last message if we're at the limit
+          const limit = 50; // Match your page limit
+          if (messageList.children.length > limit) {
+            messageList.lastChild.remove();
+          }
+
+          // Update total pages
+          fetchPaginationInfo();
+        }
+      });
+      let currentPage = 1;
+      let totalPages = 1;
+
+      async function fetchMessages(page = 1) {
+        try {
+          const response = await fetch(`/admin/messages?page=${page}`);
+          if (!response.ok) throw new Error("Failed to fetch messages");
+          const data = await response.json();
+
+          const messageList = document.getElementById("messageList");
+          messageList.innerHTML = "";
+
+          data.messages.forEach((msg) => {
+            console.log("Rendering message with ID:", msg._id);
+            const div = document.createElement("div");
+            div.className = "message-item";
+            div.innerHTML = `
+                <div>
+                    <strong>${new Date(msg.timestamp).toLocaleString()}</strong>
+                    <p>${msg.content}</p>
+                    <small>Sender: ${msg.sender}</small>
+                    <small>ID: ${msg._id}</small>
+                </div>
+                <button class="delete-btn" onclick="deleteMessage('${
+                  msg._id
+                }')">Delete</button>
+            `;
+            messageList.appendChild(div);
+          });
+
+          currentPage = data.page;
+          totalPages = data.totalPages;
+          updatePagination();
+        } catch (error) {
+          console.error("Error fetching messages:", error);
+          alert("Failed to fetch messages: " + error.message);
+        }
+      }
+
+      async function fetchPaginationInfo() {
+        try {
+          const response = await fetch(`/admin/messages?page=1&limit=1`);
+          if (!response.ok) throw new Error("Failed to fetch pagination info");
+          const data = await response.json();
+
+          totalPages = data.totalPages;
+          updatePagination();
+        } catch (error) {
+          console.error("Error updating pagination:", error);
+        }
+      }
+
+      function updatePagination() {
+        const pagination = document.getElementById("pagination");
+        pagination.innerHTML = `
+                <button onclick="fetchMessages(1)" ${
+                  currentPage === 1 ? "disabled" : ""
+                }>First</button>
+                <button onclick="fetchMessages(${currentPage - 1})" ${
+          currentPage === 1 ? "disabled" : ""
+        }>Previous</button>
+                <span>Page ${currentPage} of ${totalPages}</span>
+                <button onclick="fetchMessages(${currentPage + 1})" ${
+          currentPage === totalPages ? "disabled" : ""
+        }>Next</button>
+                <button onclick="fetchMessages(${totalPages})" ${
+          currentPage === totalPages ? "disabled" : ""
+        }>Last</button>
+            `;
+      }
+
+      async function deleteMessage(messageId) {
+        if (!confirm("Are you sure you want to delete this message?")) return;
+
+        try {
+          console.log("Attempting to delete message:", messageId);
+
+          const response = await fetch(`/admin/messages/${messageId}`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          console.log("Delete response status:", response.status);
+          const responseData = await response.json();
+          console.log("Delete response data:", responseData);
+
+          if (!response.ok) {
+            throw new Error(
+              responseData.error ||
+                responseData.details ||
+                "Failed to delete message"
+            );
+          }
+
+          console.log("Message deleted successfully");
+          await fetchMessages(currentPage);
+        } catch (error) {
+          console.error("Detailed delete error:", error);
+          alert(`Error deleting message: ${error.message}`);
+        }
+      }
+      document
+        .getElementById("clearAll")
+        .addEventListener("click", async () => {
+          if (
+            !confirm(
+              "Are you sure you want to delete ALL messages? This cannot be undone!"
+            )
+          )
+            return;
+
+          try {
+            const response = await fetch("/admin/messages", {
+              method: "DELETE",
+            });
+            if (!response.ok) throw new Error("Failed to clear messages");
+            fetchMessages(1);
+          } catch (error) {
+            console.error("Error:", error);
+            alert("Failed to clear messages");
+          }
+        });
+      socket.onAny((eventName, ...args) => {
+        console.log("Received event:", eventName, "with args:", args);
+      });
+      fetchMessages();
+    </script>
+  </body>
+</html>

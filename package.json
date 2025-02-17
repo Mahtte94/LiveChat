@@ -4,12 +4,10 @@
   "description": "",
   "type": "module",
   "main": "api/index.js",
-  
-    "scripts": {
-      "start": "node api/index.js",
-      "dev": "node api/index.js"
-    },
-  
+  "scripts": {
+    "start": "node api/index.js",
+    "dev": "node api/index.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Mahtte94/LiveChat.git"
@@ -25,6 +23,7 @@
     "@socket.io/mongo-adapter": "^0.3.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-basic-auth": "^1.2.1",
     "mongodb": "^6.13.0",
     "socket.io": "^4.8.1",
     "sqlite": "^5.1.1",

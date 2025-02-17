@@ -14,7 +14,7 @@
 
     <script>
       // Initialize socket with both transport options
-      const socket = io("https://livechat-production-5ba7.up.railway.app", {
+      const socket = io(window.location.origin, {
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionAttempts: 5,
@@ -40,9 +40,15 @@
 
       // Message handler
       socket.on("chat message", (msg) => {
-        console.log("Received message:", msg);
+        console.log("Received message with data:", msg);
 
         const item = document.createElement("li");
+
+        // Store the message ID and log it
+        if (msg._id) {
+          item.dataset.messageId = msg._id.toString();
+          console.log("Setting message ID:", msg._id.toString());
+        }
 
         if (typeof msg === "string") {
           item.textContent = msg;
@@ -59,6 +65,28 @@
 
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
+      });
+
+      socket.on("message deleted", (messageId) => {
+        console.log("Message deleted event received:", messageId);
+        const messages = document.getElementById("messages");
+        const messageElements = messages.getElementsByTagName("li");
+        console.log("Total message elements:", messageElements.length);
+
+        for (let element of messageElements) {
+          console.log("Checking element:", element.dataset.messageId);
+          if (element.dataset.messageId === messageId) {
+            console.log("Found matching message, removing it");
+            element.remove();
+            break;
+          }
+        }
+      });
+
+      socket.on("messages cleared", () => {
+        console.log("All messages cleared");
+        const messages = document.getElementById("messages");
+        messages.innerHTML = "";
       });
 
       // Form submission
@@ -79,6 +107,10 @@
 
           input.value = "";
         }
+      });
+
+      socket.onAny((eventName, ...args) => {
+        console.log("Received event:", eventName, "with args:", args);
       });
     </script>
   </body>
