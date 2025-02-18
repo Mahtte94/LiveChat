@@ -50,7 +50,6 @@
             input.focus();
           }
         });
-      });
 
       // Initialize socket with both transport options
       const socket = io(window.location.origin, {
@@ -89,7 +88,9 @@
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
         messages.scrollTop = messages.scrollHeight;
+        scrollToLatest();
       });
+    
 
       socket.on("message deleted", (messageId) => {
         const messages = document.getElementById("messages");
@@ -126,6 +127,7 @@
           input.value = "";
         }
       });
+    });
     </script>
   </body>
 </html>
