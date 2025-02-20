@@ -17,6 +17,123 @@ adminRouter.use((req, res, next) => {
   }
 });
 
+// Room management endpoints
+adminRouter.get("/rooms", async (req, res) => {
+  const mongoClient = req.app.locals.mongoClient;
+  if (!mongoClient) {
+    console.error("MongoDB client is not available");
+    return res.status(500).json({ error: "Database connection not available" });
+  }
+
+  const collection = mongoClient.db("chatdb").collection("rooms");
+
+  try {
+    const rooms = await collection.find().toArray();
+    res.status(200).json(rooms);
+  } catch (error) {
+    console.error("Error fetching rooms:", error);
+    res.status(500).json({ error: "Failed to fetch rooms" });
+  }
+});
+
+adminRouter.post("/rooms", async (req, res) => {
+  const { name } = req.body;
+  if (!name || name.trim() === "") {
+    return res.status(400).json({ error: "Room name is required" });
+  }
+
+  const mongoClient = req.app.locals.mongoClient;
+  if (!mongoClient) {
+    console.error("MongoDB client is not available");
+    return res.status(500).json({ error: "Database connection not available" });
+  }
+
+  const collection = mongoClient.db("chatdb").collection("rooms");
+
+  try {
+    const result = await collection.insertOne({
+      name: name.trim(),
+      createdAt: new Date(),
+    });
+
+    res.status(201).json({
+      success: true,
+      roomId: result.insertedId,
+      message: "Room created successfully",
+    });
+  } catch (error) {
+    console.error("Error creating room:", error);
+    if (error.code === 11000) {
+      return res
+        .status(409)
+        .json({ error: "A room with this name already exists" });
+    }
+    res.status(500).json({ error: "Failed to create room" });
+  }
+});
+
+adminRouter.delete("/rooms/:roomId", async (req, res) => {
+  const { roomId } = req.params;
+  console.log("Attempting to delete room with ID:", roomId);
+
+  const mongoClient = req.app.locals.mongoClient;
+  if (!mongoClient) {
+    console.error("MongoDB client is not available");
+    return res.status(500).json({ error: "Database connection not available" });
+  }
+
+  const roomsCollection = mongoClient.db("chatdb").collection("rooms");
+  const messagesCollection = mongoClient.db("chatdb").collection("messages");
+
+  try {
+    // Check if room exists
+    const roomToDelete = await roomsCollection.findOne({
+      _id: new ObjectId(roomId),
+    });
+
+    if (!roomToDelete) {
+      console.log("Room not found in database");
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    const roomResult = await roomsCollection.deleteOne({
+      _id: new ObjectId(roomId),
+    });
+
+    // Also delete all messages from this room
+    const messagesResult = await messagesCollection.deleteMany({
+      roomId: roomId,
+    });
+
+    console.log("Delete operation results:", {
+      room: roomResult,
+      messages: messagesResult,
+    });
+
+    if (roomResult.deletedCount === 0) {
+      return res
+        .status(404)
+        .json({ error: "Room not found or already deleted" });
+    }
+
+    // Notify all clients about the room deletion
+    req.app.locals.io.emit("room deleted", roomId);
+    console.log("Room delete notification emitted to all clients");
+
+    res.status(200).json({
+      message: "Room deleted successfully",
+      deletedMessagesCount: messagesResult.deletedCount,
+    });
+  } catch (error) {
+    console.error("Detailed error in delete room operation:", error);
+    res.status(500).json({
+      error: "Failed to delete room",
+      details: error.message,
+    });
+  }
+});
+
+// Message management endpoints
 adminRouter.delete("/messages/:messageId", async (req, res) => {
   const { messageId } = req.params;
   console.log("Attempting to delete message with ID:", messageId);
@@ -51,9 +168,19 @@ adminRouter.delete("/messages/:messageId", async (req, res) => {
         .json({ error: "Message not found or already deleted" });
     }
 
-    // Notify all clients about the deletion
-    req.app.locals.io.emit("message deleted", messageId);
-    console.log("Delete notification emitted to all clients");
+    // If message belongs to a room, notify that room specifically
+    if (messageToDelete.roomId) {
+      req.app.locals.io
+        .to(messageToDelete.roomId)
+        .emit("message deleted", messageId);
+      console.log(
+        `Delete notification emitted to room ${messageToDelete.roomId}`
+      );
+    } else {
+      // Fallback to global notification
+      req.app.locals.io.emit("message deleted", messageId);
+      console.log("Delete notification emitted to all clients");
+    }
 
     res.status(200).json({ message: "Message deleted successfully" });
   } catch (error) {
@@ -66,24 +193,40 @@ adminRouter.delete("/messages/:messageId", async (req, res) => {
 });
 
 adminRouter.delete("/messages", async (req, res) => {
+  const { roomId } = req.query; // Optional room filter
   const mongoClient = req.app.locals.mongoClient;
+
   if (!mongoClient) {
     console.error("MongoDB client is not available");
     return res.status(500).json({ error: "Database connection not available" });
   }
 
   const collection = mongoClient.db("chatdb").collection("messages");
+  let query = {};
+
+  // If roomId provided, only clear messages from that room
+  if (roomId) {
+    query = { roomId: roomId };
+  }
 
   try {
-    const result = await collection.deleteMany({});
-    console.log("Clear all messages result:", result);
+    const result = await collection.deleteMany(query);
+    console.log("Clear messages result:", result);
 
-    // Notify all clients about the clear operation
-    req.app.locals.io.emit("messages cleared");
-    console.log("Clear all notification emitted to all clients");
+    if (roomId) {
+      // Notify specific room about cleared messages
+      req.app.locals.io.to(roomId).emit("messages cleared", { roomId: roomId });
+      console.log(`Clear messages notification emitted to room ${roomId}`);
+    } else {
+      // Notify all clients about global clear
+      req.app.locals.io.emit("messages cleared");
+      console.log("Clear all notification emitted to all clients");
+    }
 
     res.status(200).json({
-      message: "All messages deleted successfully",
+      message: roomId
+        ? `All messages in room ${roomId} deleted successfully`
+        : "All messages deleted successfully",
       deletedCount: result.deletedCount,
     });
   } catch (error) {
@@ -95,29 +238,58 @@ adminRouter.delete("/messages", async (req, res) => {
 adminRouter.get("/messages", async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 50;
+  const roomId = req.query.roomId; // Optional room filter
+
   const mongoClient = req.app.locals.mongoClient;
   const collection = mongoClient.db("chatdb").collection("messages");
 
+  let query = {};
+
+  // If roomId provided, filter messages by room
+  if (roomId) {
+    query = { roomId: roomId };
+  }
+
   try {
-    // Get total count first
-    const total = await collection.countDocuments();
-    console.log("Total messages:", total); // Debug log
+    // Get total count for this query
+    const total = await collection.countDocuments(query);
+    console.log(`Total messages${roomId ? ` in room ${roomId}` : ""}:`, total);
 
     // Calculate total pages
     const totalPages = Math.max(1, Math.ceil(total / limit));
-    console.log("Calculated total pages:", totalPages); // Debug log
+    console.log("Calculated total pages:", totalPages);
 
     // Get messages for current page
     const messages = await collection
-      .find()
+      .find(query)
       .sort({ timestamp: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .toArray();
 
+    // Optionally add room names if we're in "all rooms" view
+    if (!roomId) {
+      // Get all rooms
+      const roomsCollection = mongoClient.db("chatdb").collection("rooms");
+      const rooms = await roomsCollection.find().toArray();
+
+      // Create a room name lookup map
+      const roomMap = {};
+      rooms.forEach((room) => {
+        roomMap[room._id.toString()] = room.name;
+      });
+
+      // Add room names to messages
+      messages.forEach((msg) => {
+        if (msg.roomId && roomMap[msg.roomId]) {
+          msg.roomName = roomMap[msg.roomId];
+        }
+      });
+    }
+
     console.log(
       `Returning ${messages.length} messages for page ${page} of ${totalPages}`
-    ); // Debug log
+    );
 
     res.status(200).json({
       messages,

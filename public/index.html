@@ -7,17 +7,45 @@
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <button id="chat-trigger">Click to chat...</button>
-
-    <div id="chat-container">
-      <div class="chat-content">
-        <ul id="messages"></ul>
-        <form id="form" action="">
-          <input id="input" autocomplete="off" /><button>Send</button>
-        </form>
+    <!-- Room selection UI (shown first) -->
+    <div id="room-selection" class="room-selection">
+      <h1>Welcome to Chat</h1>
+      <div>
+        <input id="username-input" placeholder="Your username (optional)" />
+      </div>
+      <div class="room-container">
+        <h3>Join Existing Room</h3>
+        <div id="room-list" class="room-list">
+          <!-- Rooms will be loaded here -->
+          <div class="loading-rooms">Loading rooms...</div>
+        </div>
+      </div>
+      <div class="create-room">
+        <h3>Create New Room</h3>
+        <input id="new-room-input" placeholder="Room name" />
+        <button id="create-room-btn">Create Room</button>
       </div>
     </div>
 
+    <!-- Chat UI (hidden initially) -->
+    <div id="chat-container" class="chat-container" style="display: none">
+      <div class="chat-header">
+        <div class="current-room">
+          <span>Room: </span>
+          <span id="current-room-name"></span>
+        </div>
+        <div class="room-actions">
+          <select id="room-switcher">
+            <option value="">Switch Room</option>
+          </select>
+          <span id="online-count">0 online</span>
+        </div>
+      </div>
+      <ul id="messages"></ul>
+      <form id="form" action="">
+        <input id="input" autocomplete="off" /><button>Send</button>
+      </form>
+    </div>
     <script src="chat.js"></script>
   </body>
 </html>

@@ -9,13 +9,45 @@
   <body>
     <div class="header">
       <h1>Chat Admin Panel</h1>
-      <div class="danger-zone">
-        <button id="clearAll" class="clear-all-btn">Clear All Messages</button>
-      </div>
     </div>
 
-    <div id="messageList" class="message-list"></div>
-    <div id="pagination" class="pagination"></div>
+    <div class="tab-container">
+      <div class="tab active" data-tab="messages">Messages</div>
+      <div class="tab" data-tab="rooms">Rooms</div>
+    </div>
+
+    <!-- Messages Tab -->
+    <div id="messages-tab" class="tab-content active">
+      <div class="room-filter">
+        <select id="roomFilter">
+          <option value="">All Rooms</option>
+          <!-- Room options will be populated here -->
+        </select>
+      </div>
+
+      <div class="danger-zone">
+        <button id="clearAll" class="clear-all-btn">Clear All Messages</button>
+        <button id="clearRoom" class="clear-room-btn" style="display: none">
+          Clear Room Messages
+        </button>
+      </div>
+
+      <div id="messageList" class="message-list"></div>
+      <div id="pagination" class="pagination"></div>
+    </div>
+
+    <!-- Rooms Tab -->
+    <div id="rooms-tab" class="tab-content">
+      <div class="create-room-form">
+        <input id="newRoomName" placeholder="New room name" />
+        <button id="createRoomBtn">Create Room</button>
+      </div>
+
+      <div id="roomList" class="room-list">
+        <!-- Rooms will be listed here -->
+        <div class="loading">Loading rooms...</div>
+      </div>
+    </div>
 
     <script>
       const socket = io(window.location.origin, {
@@ -24,100 +56,248 @@
         reconnectionAttempts: 5,
       });
 
-      // Handle single message deletion
-      socket.on("message deleted", (messageId) => {
-        console.log("Message deleted:", messageId);
-        // Refresh the current page of messages
-        fetchMessages(currentPage);
+      // Tab functionality
+      const tabs = document.querySelectorAll(".tab");
+      const tabContents = document.querySelectorAll(".tab-content");
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const tabId = tab.dataset.tab;
+
+          // Update active tab
+          tabs.forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+
+          // Show corresponding content
+          tabContents.forEach((content) => {
+            content.classList.remove("active");
+            if (content.id === `${tabId}-tab`) {
+              content.classList.add("active");
+            }
+          });
+
+          // Load appropriate content
+          if (tabId === "rooms") {
+            fetchRooms();
+          } else if (tabId === "messages") {
+            fetchRooms(); // For room filter dropdown
+            fetchMessages(currentPage);
+          }
+        });
       });
 
-      // Handle all messages being cleared
-      socket.on("messages cleared", () => {
-        console.log("All messages cleared");
-        // Reset to first page and refresh
-        currentPage = 1;
-        fetchMessages(1);
-      });
+      // Room management
+      async function fetchRooms() {
+        try {
+          const response = await fetch("/admin/rooms");
+          if (!response.ok) throw new Error("Failed to fetch rooms");
+          const rooms = await response.json();
 
-      // Handle connection events
-      socket.on("connect", () => {
-        console.log("Connected to server with ID:", socket.id);
-      });
-
-      socket.on("disconnect", () => {
-        console.log("Disconnected from server");
-      });
-
-      socket.on("connect_error", (error) => {
-        console.log("Connection error:", error);
-      });
-      socket.on("chat message", (msg) => {
-        console.log("New message received in admin:", msg);
-
-        if (currentPage === 1) {
-          const messageList = document.getElementById("messageList");
-
-          const div = document.createElement("div");
-          div.className = "message-item";
-          div.innerHTML = `
-            <div>
-                <strong>${new Date(msg.timestamp).toLocaleString()}</strong>
-                <p>${msg.content}</p>
-                <small>Sender: ${msg.sender}</small>
-                <small>ID: ${msg._id}</small>
-            </div>
-            <button class="delete-btn" onclick="deleteMessage('${
-              msg._id
-            }')">Delete</button>
-        `;
-
-          messageList.insertBefore(div, messageList.firstChild);
-
-          // Remove the last message if we're at the limit
-          const limit = 50;
-          if (messageList.children.length > limit) {
-            messageList.lastChild.remove();
+          // Update room list in rooms tab
+          const roomList = document.getElementById("roomList");
+          if (rooms.length === 0) {
+            roomList.innerHTML =
+              '<div class="no-rooms">No rooms available</div>';
+          } else {
+            roomList.innerHTML = rooms
+              .map(
+                (room) => `
+              <div class="room-item" data-room-id="${room._id}">
+                <div class="room-info">
+                  <div class="room-name">${room.name}</div>
+                  <div class="room-date">Created: ${new Date(
+                    room.createdAt
+                  ).toLocaleString()}</div>
+                </div>
+                <div class="room-actions">
+                  <button class="view-room-btn" onclick="viewRoomMessages('${
+                    room._id
+                  }', '${room.name}')">View Messages</button>
+                  <button class="delete-room-btn" onclick="deleteRoom('${
+                    room._id
+                  }', '${room.name}')">Delete Room</button>
+                </div>
+              </div>
+            `
+              )
+              .join("");
           }
 
-          // Fetch fresh pagination data with the current page's messages
-          fetchMessages(currentPage);
+          // Update room filter dropdown in messages tab
+          const roomFilter = document.getElementById("roomFilter");
+          // Keep the first "All Rooms" option
+          roomFilter.innerHTML = '<option value="">All Rooms</option>';
+
+          rooms.forEach((room) => {
+            const option = document.createElement("option");
+            option.value = room._id;
+            option.textContent = room.name;
+            roomFilter.appendChild(option);
+          });
+        } catch (error) {
+          console.error("Error fetching rooms:", error);
+          alert("Failed to fetch rooms: " + error.message);
         }
-      });
+      }
+
+      async function createRoom() {
+        const nameInput = document.getElementById("newRoomName");
+        const roomName = nameInput.value.trim();
+
+        if (!roomName) {
+          alert("Please enter a room name");
+          return;
+        }
+
+        try {
+          const response = await fetch("/admin/rooms", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: roomName }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || "Failed to create room");
+          }
+
+          alert("Room created successfully");
+          nameInput.value = "";
+          fetchRooms();
+        } catch (error) {
+          console.error("Error creating room:", error);
+          alert("Failed to create room: " + error.message);
+        }
+      }
+
+      async function deleteRoom(roomId, roomName) {
+        if (
+          !confirm(
+            `Are you sure you want to delete room "${roomName}"? This will delete all messages in this room and cannot be undone!`
+          )
+        ) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/admin/rooms/${roomId}`, {
+            method: "DELETE",
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || "Failed to delete room");
+          }
+
+          alert(
+            `Room "${roomName}" deleted successfully. ${
+              result.deletedMessagesCount || 0
+            } messages were also deleted.`
+          );
+          fetchRooms();
+
+          // If we're currently viewing this room's messages, go back to all messages
+          const currentRoomFilter = document.getElementById("roomFilter").value;
+          if (currentRoomFilter === roomId) {
+            document.getElementById("roomFilter").value = "";
+            fetchMessages(1);
+          }
+        } catch (error) {
+          console.error("Error deleting room:", error);
+          alert("Failed to delete room: " + error.message);
+        }
+      }
+
+      function viewRoomMessages(roomId, roomName) {
+        // Switch to messages tab
+        document.querySelector('.tab[data-tab="messages"]').click();
+
+        // Select the room in filter
+        document.getElementById("roomFilter").value = roomId;
+
+        // Fetch messages for this room
+        fetchMessages(1);
+      }
+
+      // Room filter change handler
+      document
+        .getElementById("roomFilter")
+        .addEventListener("change", function () {
+          const roomId = this.value;
+          currentPage = 1; // Reset to first page
+
+          // Toggle room-specific clear button
+          document.getElementById("clearRoom").style.display = roomId
+            ? "inline-block"
+            : "none";
+
+          fetchMessages(1);
+        });
+
+      // Message management
       let currentPage = 1;
       let totalPages = 1;
 
       async function fetchMessages(page = 1) {
         try {
-          console.log("Fetching messages for page:", page); // Debug log
-          const response = await fetch(`/admin/messages?page=${page}&limit=50`);
+          const roomId = document.getElementById("roomFilter").value;
+          const url = roomId
+            ? `/admin/messages?page=${page}&limit=50&roomId=${roomId}`
+            : `/admin/messages?page=${page}&limit=50`;
+
+          console.log("Fetching messages:", url);
+          const response = await fetch(url);
           if (!response.ok) throw new Error("Failed to fetch messages");
           const data = await response.json();
 
-          console.log("Received data:", data); // Debug log
+          console.log("Received data:", data);
 
           const messageList = document.getElementById("messageList");
           messageList.innerHTML = "";
 
-          data.messages.forEach((msg) => {
-            const div = document.createElement("div");
-            div.className = "message-item";
-            div.innerHTML = `
+          if (data.messages.length === 0) {
+            messageList.innerHTML =
+              '<div class="no-messages">No messages found</div>';
+          } else {
+            data.messages.forEach((msg) => {
+              const div = document.createElement("div");
+              div.className = "message-item";
+
+              // Display room information if in "All Rooms" view
+              const roomInfo =
+                !roomId && msg.roomId
+                  ? `<small>Room: ${msg.roomName || msg.roomId}</small><br>`
+                  : "";
+
+              // Display username if available
+              const usernameInfo = msg.username
+                ? `<small>Username: ${msg.username}</small><br>`
+                : "";
+
+              div.innerHTML = `
                 <div>
                     <strong>${new Date(msg.timestamp).toLocaleString()}</strong>
                     <p>${msg.content}</p>
-                    <small>Sender: ${msg.sender}</small>
+                    ${usernameInfo}
+                    <small>Sender: ${msg.sender}</small><br>
+                    ${roomInfo}
                     <small>ID: ${msg._id}</small>
                 </div>
                 <button class="delete-btn" onclick="deleteMessage('${
                   msg._id
                 }')">Delete</button>
-            `;
-            messageList.appendChild(div);
-          });
+              `;
+              messageList.appendChild(div);
+            });
+          }
 
           currentPage = page;
-          totalPages = Math.max(1, data.totalPages); // Ensure at least 1 page
-          console.log("Updated pagination:", { currentPage, totalPages }); // Debug log
+          totalPages = Math.max(1, data.totalPages);
+          console.log("Updated pagination:", { currentPage, totalPages });
 
           updatePagination();
         } catch (error) {
@@ -129,20 +309,20 @@
       function updatePagination() {
         const pagination = document.getElementById("pagination");
         pagination.innerHTML = `
-                <button onclick="fetchMessages(1)" ${
-                  currentPage === 1 ? "disabled" : ""
-                }>First</button>
-                <button onclick="fetchMessages(${currentPage - 1})" ${
+          <button onclick="fetchMessages(1)" ${
+            currentPage === 1 ? "disabled" : ""
+          }>First</button>
+          <button onclick="fetchMessages(${currentPage - 1})" ${
           currentPage === 1 ? "disabled" : ""
         }>Previous</button>
-                <span>Page ${currentPage} of ${totalPages}</span>
-                <button onclick="fetchMessages(${currentPage + 1})" ${
+          <span>Page ${currentPage} of ${totalPages}</span>
+          <button onclick="fetchMessages(${currentPage + 1})" ${
           currentPage === totalPages ? "disabled" : ""
         }>Next</button>
-                <button onclick="fetchMessages(${totalPages})" ${
+          <button onclick="fetchMessages(${totalPages})" ${
           currentPage === totalPages ? "disabled" : ""
         }>Last</button>
-            `;
+        `;
       }
 
       async function deleteMessage(messageId) {
@@ -177,6 +357,8 @@
           alert(`Error deleting message: ${error.message}`);
         }
       }
+
+      // Clear all messages button
       document
         .getElementById("clearAll")
         .addEventListener("click", async () => {
@@ -184,8 +366,9 @@
             !confirm(
               "Are you sure you want to delete ALL messages? This cannot be undone!"
             )
-          )
+          ) {
             return;
+          }
 
           try {
             const response = await fetch("/admin/messages", {
@@ -198,6 +381,156 @@
             alert("Failed to clear messages");
           }
         });
+
+      // Clear room messages button
+      document
+        .getElementById("clearRoom")
+        .addEventListener("click", async () => {
+          const roomId = document.getElementById("roomFilter").value;
+          const roomName =
+            document.getElementById("roomFilter").options[
+              document.getElementById("roomFilter").selectedIndex
+            ].text;
+
+          if (!roomId) return;
+
+          if (
+            !confirm(
+              `Are you sure you want to delete ALL messages in room "${roomName}"? This cannot be undone!`
+            )
+          ) {
+            return;
+          }
+
+          try {
+            const response = await fetch(`/admin/messages?roomId=${roomId}`, {
+              method: "DELETE",
+            });
+            if (!response.ok) throw new Error("Failed to clear room messages");
+            fetchMessages(1);
+          } catch (error) {
+            console.error("Error:", error);
+            alert("Failed to clear room messages");
+          }
+        });
+
+      // Socket event handlers
+      socket.on("message deleted", (messageId) => {
+        console.log("Message deleted:", messageId);
+        // Refresh the current page of messages
+        fetchMessages(currentPage);
+      });
+
+      socket.on("messages cleared", (data) => {
+        console.log("Messages cleared event:", data);
+        const roomId = document.getElementById("roomFilter").value;
+
+        // Only refresh if it matches our current view
+        if (!data || !data.roomId || data.roomId === roomId) {
+          console.log("Refreshing messages after clear");
+          currentPage = 1;
+          fetchMessages(1);
+        }
+      });
+
+      socket.on("room deleted", (roomId) => {
+        console.log("Room deleted:", roomId);
+        fetchRooms();
+
+        // If we're currently viewing this room, go back to all messages
+        const currentRoomFilter = document.getElementById("roomFilter").value;
+        if (currentRoomFilter === roomId) {
+          document.getElementById("roomFilter").value = "";
+          fetchMessages(1);
+        }
+      });
+
+      socket.on("connect", () => {
+        console.log("Connected to server with ID:", socket.id);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Disconnected from server");
+      });
+
+      socket.on("connect_error", (error) => {
+        console.log("Connection error:", error);
+      });
+
+      socket.on("chat message", (msg) => {
+        console.log("New message received in admin:", msg);
+
+        const currentRoomFilter = document.getElementById("roomFilter").value;
+
+        // Only update list if we're on page 1 and either viewing all rooms or the specific room
+        if (
+          currentPage === 1 &&
+          (!currentRoomFilter || currentRoomFilter === msg.roomId)
+        ) {
+          const messageList = document.getElementById("messageList");
+
+          // Remove "no messages" notice if present
+          const noMessages = messageList.querySelector(".no-messages");
+          if (noMessages) {
+            messageList.innerHTML = "";
+          }
+
+          const div = document.createElement("div");
+          div.className = "message-item";
+
+          // Display room information if in "All Rooms" view
+          const roomInfo =
+            !currentRoomFilter && msg.roomId
+              ? `<small>Room: ${msg.roomName || msg.roomId}</small><br>`
+              : "";
+
+          // Display username if available
+          const usernameInfo = msg.username
+            ? `<small>Username: ${msg.username}</small><br>`
+            : "";
+
+          div.innerHTML = `
+            <div>
+              <strong>${new Date(msg.timestamp).toLocaleString()}</strong>
+              <p>${msg.content}</p>
+              ${usernameInfo}
+              <small>Sender: ${msg.sender}</small><br>
+              ${roomInfo}
+              <small>ID: ${msg._id}</small>
+            </div>
+            <button class="delete-btn" onclick="deleteMessage('${
+              msg._id
+            }')">Delete</button>
+          `;
+
+          messageList.insertBefore(div, messageList.firstChild);
+
+          // Remove the last message if we're at the limit
+          const limit = 50;
+          if (messageList.children.length > limit) {
+            messageList.lastChild.remove();
+          }
+
+          // Fetch fresh pagination data
+          fetchMessages(currentPage);
+        }
+      });
+
+      // Event listeners
+      document
+        .getElementById("createRoomBtn")
+        .addEventListener("click", createRoom);
+
+      // Expose functions to window for onclick handlers
+      window.deleteMessage = deleteMessage;
+      window.fetchMessages = fetchMessages;
+      window.deleteRoom = deleteRoom;
+      window.viewRoomMessages = viewRoomMessages;
+
+      // Initialize the page
+      fetchRooms();
+      fetchMessages(1);
+
       socket.onAny((eventName, ...args) => {
         console.log("Received event:", eventName, "with args:", args);
       });
