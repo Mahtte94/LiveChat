@@ -36,14 +36,61 @@ const DB_NAME = "chatdb";
 const MESSAGES_COLLECTION = "messages";
 const ROOMS_COLLECTION = "rooms";
 const SOCKET_COLLECTION = "socket.io-adapter";
+const MESSAGE_TIMER = 2 * 60 * 60 * 1000;
 
 let mongoClient;
+const messageTimers = new Map();
+
+async function deleteMessage(messageId, collection) {
+  try {
+    const timerId = messageTimers.get(messageId.toString());
+
+    if (timerId) {
+      clearTimeout(timerId);
+      messageTimers.delete(messageId.toString());
+    }
+
+    await collection.deleteOne({ _id: messageId });
+
+    io.emit("message deleted", messageId.toString());
+    console.log(`Message ${messageId} deleted after expiration`);
+  } catch (error) {
+    console.error("Error deleting message: ", error);
+  }
+}
+
+function scheduleMessageDeletion(messageId, collection, expirationTime) {
+  const now = Date.now();
+  const timeDuration = expirationTime - now;
+
+  if (timeDuration <= 0) {
+    deleteMessage(messageId, collection);
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    deleteMessage(messageId, collection);
+  }, timeDuration);
+
+  messageTimers.set(messageId.toString(), timer);
+}
 
 async function initMongoDB() {
   try {
     mongoClient = new MongoClient(MONGO_URL);
     await mongoClient.connect();
     console.log("Debug: MongoDB connected");
+
+    const db = mongoClient.db(DB_NAME);
+    const collection = db.collection(COLLECTION);
+
+    await collection.createIndex({ timestamp: 1 });
+
+    const existingMessages = await collection.find().toArray();
+    existingMessages.forEach((msg) => {
+      const expirationTime = msg.timestamp.getTime() + MESSAGE_TIMER;
+      scheduleMessageDeletion(msg._id, collection, expirationTime);
+    });
 
     // Make mongoClient available to routes
     app.locals.mongoClient = mongoClient;
@@ -295,6 +342,12 @@ async function main() {
           // Add the _id to the messageData
           messageData._id = result.insertedId;
 
+          scheduleMessageDeletion(
+            messageData._id,
+            collection,
+            messageData.timestamp.getTime() + MESSAGE_TIMER
+          );
+
           // Broadcast to room clients with the _id included
           io.to(msg.roomId).emit("chat message", messageData);
 
@@ -335,6 +388,11 @@ async function main() {
 // Graceful shutdown
 process.on("SIGINT", async () => {
   try {
+    for (const timer of messageTimers.values()) {
+      clearTimeout(timer);
+    }
+    messageTimers.clear();
+
     if (mongoClient) {
       await mongoClient.close();
       console.log("MongoDB connection closed.");
