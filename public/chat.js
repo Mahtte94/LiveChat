@@ -323,7 +323,6 @@ function addMessageToDisplay(msg) {
       const timeElement = document.createElement("small");
       timeElement.classList.add("message-time");
       timeElement.textContent = time;
-
       item.appendChild(document.createElement("br"));
       item.appendChild(timeElement);
     } catch (e) {
