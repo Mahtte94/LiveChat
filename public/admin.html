@@ -18,18 +18,25 @@
 
     <!-- Messages Tab -->
     <div id="messages-tab" class="tab-content active">
-      <div class="room-filter">
-        <select id="roomFilter">
-          <option value="">All Rooms</option>
-          <!-- Room options will be populated here -->
-        </select>
-      </div>
+      <div class="message-controls">
+        <div class="room-filter">
+          <select id="roomFilter">
+            <option value="">All Rooms</option>
+            <!-- Room options will be populated here -->
+          </select>
+          <button id="refreshMessages" class="refresh-btn">
+            <span class="refresh-icon">↻</span> Refresh Messages
+          </button>
+        </div>
 
-      <div class="danger-zone">
-        <button id="clearAll" class="clear-all-btn">Clear All Messages</button>
-        <button id="clearRoom" class="clear-room-btn" style="display: none">
-          Clear Room Messages
-        </button>
+        <div class="danger-zone">
+          <button id="clearAll" class="clear-all-btn">
+            Clear All Messages
+          </button>
+          <button id="clearRoom" class="clear-room-btn" style="display: none">
+            Clear Room Messages
+          </button>
+        </div>
       </div>
 
       <div id="messageList" class="message-list"></div>
@@ -250,13 +257,23 @@
             : `/admin/messages?page=${page}&limit=50`;
 
           console.log("Fetching messages:", url);
+
+          // Show loading state
+          const messageList = document.getElementById("messageList");
+          if (
+            messageList.children.length === 0 ||
+            messageList.querySelector(".loading-messages")
+          ) {
+            messageList.innerHTML =
+              '<div class="loading-messages">Loading messages...</div>';
+          }
+
           const response = await fetch(url);
           if (!response.ok) throw new Error("Failed to fetch messages");
           const data = await response.json();
 
           console.log("Received data:", data);
 
-          const messageList = document.getElementById("messageList");
           messageList.innerHTML = "";
 
           if (data.messages.length === 0) {
@@ -278,18 +295,19 @@
                 ? `<small>Username: ${msg.username}</small><br>`
                 : "";
 
+              // Format timestamp
+              const timestamp = new Date(msg.timestamp).toLocaleString();
+
               div.innerHTML = `
                 <div>
-                    <strong>${new Date(msg.timestamp).toLocaleString()}</strong>
+                    <strong>${timestamp}</strong>
                     <p>${msg.content}</p>
                     ${usernameInfo}
                     <small>Sender: ${msg.sender}</small><br>
                     ${roomInfo}
                     <small>ID: ${msg._id}</small>
                 </div>
-                <button class="delete-btn" onclick="deleteMessage('${
-                  msg._id
-                }')">Delete</button>
+                <button class="delete-btn" onclick="deleteMessage('${msg._id}')">Delete</button>
               `;
               messageList.appendChild(div);
             });
@@ -302,6 +320,9 @@
           updatePagination();
         } catch (error) {
           console.error("Error fetching messages:", error);
+          document.getElementById(
+            "messageList"
+          ).innerHTML = `<div class="error-message">Failed to fetch messages: ${error.message}</div>`;
           alert("Failed to fetch messages: " + error.message);
         }
       }
@@ -357,6 +378,19 @@
           alert(`Error deleting message: ${error.message}`);
         }
       }
+
+      // Refresh button handler
+      document
+        .getElementById("refreshMessages")
+        .addEventListener("click", () => {
+          // Show loading indicator
+          const messageList = document.getElementById("messageList");
+          messageList.innerHTML =
+            '<div class="loading-messages">Refreshing messages...</div>';
+
+          // Fetch messages with current filters
+          fetchMessages(currentPage);
+        });
 
       // Clear all messages button
       document

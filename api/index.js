@@ -272,10 +272,13 @@ async function main() {
               `Debug: Sending ${messages.length} recent messages from room ${currentRoom} to ${socket.id}`
             );
 
-            // Send messages to user
-            messages.reverse().forEach((msg) => {
-              socket.emit("chat message", msg);
-            });
+            // Send messages as one array instead of individual emits
+            if (messages.length > 0) {
+              // Reverse to get chronological order
+              socket.emit("chat history", messages.reverse());
+            } else {
+              console.log(`No messages to send for room ${currentRoom}`);
+            }
 
             // Notify room about user count update
             io.to(currentRoom).emit("room users update", {

@@ -23,6 +23,7 @@ const messages = document.getElementById("messages");
 // App state
 let currentRoom = "";
 let username = "";
+let messageCache = new Map(); // Cache messages by ID to prevent duplicates
 
 // Initialize by loading available rooms
 function loadRooms() {
@@ -92,16 +93,22 @@ function joinRoom(roomId, roomName) {
     socket.connect();
   }
 
+  // Update room and reset state
   currentRoom = roomId;
+  messageCache.clear(); // Clear message cache when changing rooms
+
+  // Show UI
+  roomSelection.style.display = "none";
+  chatContainer.style.display = "flex";
+
+  // Set up empty messages container with loading state
+  showLoadingState();
 
   // Join the room
   socket.emit("join room", { roomId, username }, (response) => {
     if (response.success) {
-      // Update UI to show chat interface
-      roomSelection.style.display = "none";
-      chatContainer.style.display = "flex";
+      // Update room name display
       currentRoomName.textContent = response.roomName || roomName;
-      messages.innerHTML = ""; // Clear messages when joining new room
 
       // If we don't know the room name yet, set it from response
       if (!roomName && response.roomName) {
@@ -110,10 +117,45 @@ function joinRoom(roomId, roomName) {
 
       // Update online count
       updateOnlineCount(response.userCount || 1);
+
+      // Set a timeout to show "no messages" if we don't get any history
+      setTimeout(() => {
+        if (
+          messages.childElementCount === 1 &&
+          messages.firstChild.id === "loading-messages"
+        ) {
+          showNoMessagesState();
+        }
+      }, 3000);
     } else {
       alert("Failed to join room: " + (response.error || "Unknown error"));
+      // Go back to room selection
+      roomSelection.style.display = "block";
+      chatContainer.style.display = "none";
     }
   });
+}
+
+// Show a loading state in the messages container
+function showLoadingState() {
+  messages.innerHTML = "";
+  const loadingItem = document.createElement("div");
+  loadingItem.id = "loading-messages";
+  loadingItem.className = "loading-message";
+  loadingItem.innerHTML = `
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading message history...</div>
+  `;
+  messages.appendChild(loadingItem);
+}
+
+// Show empty state when no messages are available
+function showNoMessagesState() {
+  messages.innerHTML = "";
+  const emptyState = document.createElement("div");
+  emptyState.className = "empty-messages";
+  emptyState.textContent = "No messages yet. Be the first to say hello!";
+  messages.appendChild(emptyState);
 }
 
 function createRoom() {
@@ -179,60 +221,153 @@ socket.on("room users update", ({ roomId, userCount }) => {
   }
 });
 
-// Message handler
-socket.on("chat message", (msg) => {
-  console.log("Received message with data:", msg);
+// Handle chat history messages
+socket.on("chat history", (messagesData) => {
+  console.log(
+    `Received chat history with ${
+      Array.isArray(messagesData) ? messagesData.length : 0
+    } messages`
+  );
 
-  // Only display messages for current room
-  if (msg.roomId !== currentRoom) return;
-
-  const item = document.createElement("li");
-
-  // Store the message ID and log it
-  if (msg._id) {
-    item.dataset.messageId = msg._id.toString();
-    console.log("Setting message ID:", msg._id.toString());
+  if (!Array.isArray(messagesData) || messagesData.length === 0) {
+    showNoMessagesState();
+    return;
   }
 
-  if (typeof msg === "string") {
-    item.textContent = msg;
-  } else if (msg && msg.content) {
-    // Add username display if available
-    const usernameDisplay = msg.username ? `${msg.username}: ` : "";
-    item.textContent = `${usernameDisplay}${msg.content}`;
+  // Filter messages for current room
+  const roomMessages = messagesData.filter(
+    (msg) => msg && msg.roomId === currentRoom
+  );
 
-    // Style based on sender
-    if (msg.sender === socket.id) {
-      item.classList.add("own-message");
-    } else {
-      item.classList.add("other-message");
+  if (roomMessages.length === 0) {
+    showNoMessagesState();
+    return;
+  }
+
+  // Start with a fresh container
+  messages.innerHTML = "";
+
+  // Display messages
+  roomMessages.forEach((msg) => {
+    addMessageToDisplay(msg);
+  });
+
+  // Scroll to bottom
+  scrollToBottom();
+});
+
+// Handle new chat messages
+socket.on("chat message", (msg) => {
+  // Skip if not for current room
+  if (!msg || msg.roomId !== currentRoom) return;
+
+  // Remove empty state if it exists
+  const emptyState = messages.querySelector(".empty-messages");
+  if (emptyState) {
+    messages.innerHTML = "";
+  }
+
+  // Remove loading state if it exists
+  const loadingState = messages.querySelector("#loading-messages");
+  if (loadingState) {
+    messages.innerHTML = "";
+  }
+
+  // Add the new message
+  addMessageToDisplay(msg);
+  scrollToBottom();
+});
+
+// Unified function to add a message to the display
+function addMessageToDisplay(msg) {
+  // Skip invalid messages
+  if (!msg || !msg.content) {
+    console.error("Invalid message format", msg);
+    return;
+  }
+
+  // Skip duplicates (using message ID)
+  if (msg._id && messageCache.has(msg._id)) {
+    console.log("Skipping duplicate message:", msg._id);
+    return;
+  }
+
+  // Create message element
+  const item = document.createElement("li");
+
+  // Store message ID as data attribute and in cache
+  if (msg._id) {
+    item.dataset.messageId = msg._id.toString();
+    messageCache.set(msg._id, true);
+  }
+
+  // Add username prefix if available
+  const usernameDisplay = msg.username ? `${msg.username}: ` : "";
+  item.textContent = `${usernameDisplay}${msg.content}`;
+
+  // Style based on sender
+  if (msg.sender === socket.id) {
+    item.classList.add("own-message");
+  } else {
+    item.classList.add("other-message");
+  }
+
+  // Add timestamp if available
+  if (msg.timestamp) {
+    try {
+      const time = new Date(msg.timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const timeElement = document.createElement("small");
+      timeElement.classList.add("message-time");
+      timeElement.textContent = time;
+
+      item.appendChild(document.createElement("br"));
+      item.appendChild(timeElement);
+    } catch (e) {
+      console.error("Failed to format timestamp:", e);
     }
   }
 
+  // Add message to container
   messages.appendChild(item);
+}
+
+// Helper to scroll to the bottom of the messages
+function scrollToBottom() {
+  messages.scrollTop = messages.scrollHeight;
   window.scrollTo(0, document.body.scrollHeight);
-});
+}
 
 socket.on("message deleted", (messageId) => {
   console.log("Message deleted event received:", messageId);
-  const messages = document.getElementById("messages");
-  const messageElements = messages.getElementsByTagName("li");
-  console.log("Total message elements:", messageElements.length);
 
+  // Remove from cache
+  if (messageCache.has(messageId)) {
+    messageCache.delete(messageId);
+  }
+
+  // Remove from DOM
+  const messageElements = messages.getElementsByTagName("li");
   for (let element of messageElements) {
-    console.log("Checking element:", element.dataset.messageId);
     if (element.dataset.messageId === messageId) {
-      console.log("Found matching message, removing it");
       element.remove();
       break;
     }
+  }
+
+  // Show empty state if no messages left
+  if (messages.getElementsByTagName("li").length === 0) {
+    showNoMessagesState();
   }
 });
 
 socket.on("messages cleared", () => {
   console.log("All messages cleared");
-  const messages = document.getElementById("messages");
-  messages.innerHTML = "";
+  messageCache.clear();
+  showNoMessagesState();
 });
 
 // Form submission
@@ -264,6 +399,7 @@ form.addEventListener("submit", (e) => {
   }
 });
 
+// Debug: log all socket events
 socket.onAny((eventName, ...args) => {
   console.log("Received event:", eventName, "with args:", args);
 });
