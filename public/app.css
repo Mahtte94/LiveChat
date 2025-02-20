@@ -32,7 +32,7 @@ body {
   background: white;
   border: 1px solid #ccc;
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  z-index: 90;
 }
 
 #chat-container.visible {
@@ -73,6 +73,11 @@ body {
   background: #f5f5f5;
 }
 
+.own-message, .other-message {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
 #form {
   background: rgba(0, 0, 0, 0.15);
   padding: 0.25rem;
@@ -103,4 +108,28 @@ body {
   border-radius: 3px;
   outline: none;
   color: #fff;
+}
+
+.current-room {
+  font-size: 2rem;
+  align-self: flex-start;
+  position: absolute;
+  top: 20%;
+}
+
+#online-count {
+  color: green;
+  margin-left: 1rem;
+}
+
+.room-actions {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+}
+
+#room-switcher {
+  display: flex;
+  align-content: flex-end;
+
 }

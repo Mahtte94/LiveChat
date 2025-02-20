@@ -19,6 +19,7 @@ const onlineCount = document.getElementById("online-count");
 const form = document.getElementById("form");
 const input = document.getElementById("input");
 const messages = document.getElementById("messages");
+const thisRooms = document.getElementById("current-room");
 
 // App state
 let currentRoom = "";
@@ -100,6 +101,7 @@ function joinRoom(roomId, roomName) {
       // Update UI to show chat interface
       roomSelection.style.display = "none";
       chatContainer.style.display = "flex";
+      thisRooms.style.display = "flex";
       currentRoomName.textContent = response.roomName || roomName;
       messages.innerHTML = ""; // Clear messages when joining new room
 

@@ -27,13 +27,16 @@
       </div>
     </div>
 
+    <div class="current-room" id="current-room" style="display: none">
+      <span>Room:&nbsp</span>
+      <span id="current-room-name"></span>
+    </div>
     <!-- Chat UI (hidden initially) -->
     <div id="chat-container" class="chat-container" style="display: none">
+     
+      <ul id="messages"></ul>
       <div class="chat-header">
-        <div class="current-room">
-          <span>Room: </span>
-          <span id="current-room-name"></span>
-        </div>
+        
         <div class="room-actions">
           <select id="room-switcher">
             <option value="">Switch Room</option>
@@ -41,7 +44,6 @@
           <span id="online-count">0 online</span>
         </div>
       </div>
-      <ul id="messages"></ul>
       <form id="form" action="">
         <input id="input" autocomplete="off" /><button>Send</button>
       </form>
