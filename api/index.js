@@ -82,7 +82,7 @@ async function initMongoDB() {
     console.log("Debug: MongoDB connected");
 
     const db = mongoClient.db(DB_NAME);
-    const collection = db.collection(COLLECTION);
+    const collection = db.collection(MESSAGES_COLLECTION);
 
     await collection.createIndex({ timestamp: 1 });
 
@@ -344,7 +344,7 @@ async function main() {
 
           scheduleMessageDeletion(
             messageData._id,
-            collection,
+            messagesCollection,
             messageData.timestamp.getTime() + MESSAGE_TIMER
           );
 
