@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "api/index.js",
+  "main": "server/index.js",
   "scripts": {
-    "start": "node api/index.js",
-    "dev": "node api/index.js"
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
   },
   "repository": {
     "type": "git",

@@ -4,7 +4,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>Socket.IO chat</title>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
-    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="assets/app.css" />
+    <!-- Note: Using type="module" for ES module support -->
+    <script type="module" src="./js/main.js" defer></script>
   </head>
   <body>
     <!-- Room selection UI (shown first) -->
@@ -31,12 +33,11 @@
       <span>Room:&nbsp</span>
       <span id="current-room-name"></span>
     </div>
+
     <!-- Chat UI (hidden initially) -->
     <div id="chat-container" class="chat-container" style="display: none">
-     
       <ul id="messages"></ul>
       <div class="chat-header">
-        
         <div class="room-actions">
           <select id="room-switcher">
             <option value="">Switch Room</option>
@@ -48,6 +49,5 @@
         <input id="input" autocomplete="off" /><button>Send</button>
       </form>
     </div>
-    <script src="chat.js"></script>
   </body>
 </html>

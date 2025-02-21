@@ -1,5 +1,5 @@
 import express from "express";
-import { MongoClient, ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 import basicAuth from "express-basic-auth";
 
 const adminRouter = express.Router();
