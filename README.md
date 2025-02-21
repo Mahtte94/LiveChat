@@ -5,7 +5,8 @@ LiveChat is a real-time messaging application designed to facilitate seamless co
 ## Features
 
 - **Real-time Messaging**: Instantly send and receive messages.
-- **Admin System**: Delete unwanted messages.
+- **Custom Rooms**: Users are able to create chat rooms on the fly.
+- **Admin System**: Delete unwanted messages or rooms.
 - **Scalable Architecture**: Designed to handle multiple concurrent users efficiently.
 
 ## Demo
@@ -52,3 +53,7 @@ To set up the project locally, follow these steps:
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](https://github.com/Mahtte94/LiveChat/blob/main/LICENSE) file for details.
+
+## Authors
+[Mahtias](https://github.com/Mahtte94)
+[Viktor](https://github.com/Viktor-TPD)
