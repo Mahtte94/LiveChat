@@ -31,6 +31,14 @@ export function handleChatMessage(message) {
     return;
   }
 
+  // Remove empty state if it exists
+  const elements = getElements();
+  const emptyState =
+    elements.messagesContainer.querySelector(".empty-messages");
+  if (emptyState) {
+    clearMessagesDisplay();
+  }
+
   // Add the message to the display
   addMessageToDisplay(message);
   scrollToBottom();
@@ -42,10 +50,10 @@ export function handleChatMessage(message) {
  */
 export function handleChatHistory(messages) {
   const state = getState();
-  const elements = getElements();
 
   // Validate messages
   if (!Array.isArray(messages) || messages.length === 0) {
+    console.log("No messages in history, showing empty state");
     showNoMessagesState();
     return;
   }
@@ -56,6 +64,7 @@ export function handleChatHistory(messages) {
   );
 
   if (roomMessages.length === 0) {
+    console.log("No messages for current room, showing empty state");
     showNoMessagesState();
     return;
   }
@@ -73,21 +82,54 @@ export function handleChatHistory(messages) {
 }
 
 /**
+ * Set a timeout to show empty state if no messages arrive
+ * This handles the case where the server doesn't send any history
+ */
+export function setupEmptyStateTimeout() {
+  const elements = getElements();
+
+  // Check if we already have a loading indicator
+  const loadingElement =
+    elements.messagesContainer.querySelector("#loading-messages");
+
+  if (loadingElement) {
+    // Set a timeout to show "no messages" if we don't get any history within 3 seconds
+    setTimeout(() => {
+      const stillLoading =
+        elements.messagesContainer.querySelector("#loading-messages");
+      if (stillLoading) {
+        console.log("No messages received after timeout, showing empty state");
+        showNoMessagesState();
+      }
+    }, 3000);
+  }
+}
+
+/**
  * Handle message deleted event
  * @param {string} messageId - The ID of the deleted message
  */
 export function handleMessageDeleted(messageId) {
+  console.log("Message deleted event received:", messageId);
+
   // Remove from cache
   removeMessage(messageId);
 
   // Remove from display
   removeMessageFromDisplay(messageId);
+
+  // Check if this was the last message
+  const elements = getElements();
+  if (elements.messagesContainer.querySelectorAll("li").length === 0) {
+    showNoMessagesState();
+  }
 }
 
 /**
  * Handle messages cleared event
  */
 export function handleMessageCleared() {
+  console.log("All messages cleared");
   clearMessageCache();
   showNoMessagesState();
 }

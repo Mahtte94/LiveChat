@@ -20,7 +20,6 @@ export function addMessageToDisplay(msg) {
 
   // Skip duplicates (using message ID)
   if (msg._id && hasMessage(msg._id)) {
-    console.log("Skipping duplicate message:", msg._id);
     return;
   }
 
@@ -97,7 +96,7 @@ export function removeMessageFromDisplay(messageId) {
   }
 
   // Show empty state if no messages left
-  if (elements.messagesContainer.getElementsByTagName("li").length === 0) {
+  if (elements.messagesContainer.querySelectorAll("li").length === 0) {
     showNoMessagesState();
   }
 }
@@ -128,6 +127,23 @@ export function showLoadingState() {
 }
 
 /**
+ * Set a timeout to show empty state if no messages arrive
+ * This handles the case where the server doesn't send any history
+ */
+export function setupEmptyStateTimeout() {
+  const elements = getElements();
+
+  // Set a timeout to show "no messages" if we don't get any history within 3 seconds
+  setTimeout(() => {
+    const loadingElement =
+      elements.messagesContainer.querySelector("#loading-messages");
+    if (loadingElement) {
+      showNoMessagesState();
+    }
+  }, 3000);
+}
+
+/**
  * Show empty state when no messages are available
  */
 export function showNoMessagesState() {
@@ -136,7 +152,7 @@ export function showNoMessagesState() {
   elements.messagesContainer.innerHTML = "";
   const emptyState = document.createElement("div");
   emptyState.className = "empty-messages";
-  emptyState.textContent = "No messages yet. Be the first to say hello!";
+  emptyState.textContent = "Be the first one to send a message - be kind 🥰";
   elements.messagesContainer.appendChild(emptyState);
 }
 

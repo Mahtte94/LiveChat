@@ -1,4 +1,5 @@
 // roomService.js - Room operations and event handlers
+// roomService.js - Room operations and event handlers
 
 import { getState, setState, clearMessageCache } from "../store/appState.js";
 import { getElements } from "../ui/elements.js";
@@ -9,7 +10,7 @@ import {
   updateRoomSwitcher,
   updateRoomInfo,
 } from "../ui/roomUI.js";
-import { showLoadingState } from "../ui/messageUI.js";
+import { showLoadingState, setupEmptyStateTimeout } from "../ui/messageUI.js";
 import { emitEvent } from "./socketService.js";
 import { getSocket, connectSocket } from "../config/socketConfig.js";
 
@@ -70,6 +71,9 @@ export function joinRoom(roomId, roomName) {
 
   // Show loading state while waiting for messages
   showLoadingState();
+
+  // Setup timeout to show empty state if no messages arrive
+  setupEmptyStateTimeout();
 
   // Make sure socket is connected before attempting to join
   if (!socket.connected) {
