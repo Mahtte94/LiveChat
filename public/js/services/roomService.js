@@ -55,7 +55,6 @@ export function joinRoom(roomId, roomName) {
 
   // If already in a room, leave it first
   if (state.currentRoom) {
-    console.log(`Leaving current room: ${state.currentRoom}`);
     socket.emit("leave room", state.currentRoom);
   }
 
@@ -72,12 +71,8 @@ export function joinRoom(roomId, roomName) {
   // Show loading state while waiting for messages
   showLoadingState();
 
-  console.log(`Joining room: ${roomId} as ${username}`);
-
   // Make sure socket is connected before attempting to join
   if (!socket.connected) {
-    console.log("Socket not connected, connecting now...");
-
     // Connect and wait for connection before joining
     socket.connect();
 
@@ -103,7 +98,6 @@ function joinRoomAfterConnection(socket, roomId, roomName, username) {
 
       // Update room info
       updateRoomInfo(displayName, response.userCount || 1);
-      console.log(`Successfully joined room: ${displayName}`);
     } else {
       console.error("Failed to join room:", response.error);
       alert("Failed to join room: " + (response.error || "Unknown error"));

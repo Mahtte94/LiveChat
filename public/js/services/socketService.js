@@ -15,13 +15,6 @@ import { handleRoomUsersUpdate } from "./roomService.js";
  */
 export function setupSocketListeners(socket) {
   // Connection events
-  socket.on("connect", () => {
-    console.log("Connected to server with ID:", socket.id);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Disconnected from server");
-  });
 
   socket.on("connect_error", (error) => {
     console.log("Connection error:", error);
@@ -48,13 +41,6 @@ export function setupSocketListeners(socket) {
   socket.on("room users update", (data) => {
     handleRoomUsersUpdate(data);
   });
-
-  // Debug: log all socket events
-  if (window.location.hostname === "localhost") {
-    socket.onAny((eventName, ...args) => {
-      console.log("Received event:", eventName, "with args:", args);
-    });
-  }
 }
 
 /**

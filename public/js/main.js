@@ -8,8 +8,6 @@ import { validateElements } from "./ui/elements.js";
 
 // Initialize the application
 function initApp() {
-  console.log("Initializing chat application...");
-
   // Verify DOM elements exist
   try {
     validateElements();
@@ -28,8 +26,6 @@ function initApp() {
 
   // Load initial room list
   loadRooms();
-
-  console.log("Chat application initialized successfully");
 }
 
 // Start the application when the DOM is fully loaded

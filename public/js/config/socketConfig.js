@@ -15,8 +15,6 @@ export function initSocket() {
       reconnectionAttempts: 5,
       autoConnect: false, // Don't connect until room is selected
     });
-
-    console.log("Socket.IO instance initialized");
   }
 
   return socketInstance;
@@ -42,7 +40,6 @@ export function connectSocket() {
   const socket = getSocket();
 
   if (!socket.connected) {
-    console.log("Connecting to socket server...");
     socket.connect();
   }
 

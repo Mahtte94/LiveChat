@@ -44,12 +44,6 @@ export function handleChatHistory(messages) {
   const state = getState();
   const elements = getElements();
 
-  console.log(
-    `Received chat history with ${
-      Array.isArray(messages) ? messages.length : 0
-    } messages`
-  );
-
   // Validate messages
   if (!Array.isArray(messages) || messages.length === 0) {
     showNoMessagesState();
@@ -83,8 +77,6 @@ export function handleChatHistory(messages) {
  * @param {string} messageId - The ID of the deleted message
  */
 export function handleMessageDeleted(messageId) {
-  console.log("Message deleted event received:", messageId);
-
   // Remove from cache
   removeMessage(messageId);
 
@@ -96,7 +88,6 @@ export function handleMessageDeleted(messageId) {
  * Handle messages cleared event
  */
 export function handleMessageCleared() {
-  console.log("All messages cleared");
   clearMessageCache();
   showNoMessagesState();
 }
@@ -112,8 +103,6 @@ export function sendMessage(content) {
   const state = getState();
   const clientOffset = `${socket.id}-${Date.now()}`;
 
-  console.log("Sending message:", content);
-
   const messageData = {
     content: content,
     roomId: state.currentRoom,
@@ -124,8 +113,6 @@ export function sendMessage(content) {
   emitEvent(socket, "chat message", messageData, (error) => {
     if (error) {
       console.error("Error sending message:", error);
-    } else {
-      console.log("Message sent successfully");
     }
   });
 }
