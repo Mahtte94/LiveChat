@@ -3,10 +3,7 @@
 import { getElements } from "./elements.js";
 import { joinRoom } from "../services/roomService.js";
 
-/**
- * Render the list of available rooms
- * @param {Array} rooms - The array of room objects to render
- */
+
 export function renderRoomList(rooms) {
   const elements = getElements();
   elements.roomList.innerHTML = "";
@@ -37,10 +34,7 @@ export function renderRoomList(rooms) {
   });
 }
 
-/**
- * Update the room switcher dropdown with available rooms
- * @param {Array} rooms - The array of room objects
- */
+
 export function updateRoomSwitcher(rooms) {
   const elements = getElements();
 
@@ -55,11 +49,7 @@ export function updateRoomSwitcher(rooms) {
   });
 }
 
-/**
- * Update room information display
- * @param {string} [roomName] - Optional room name to update
- * @param {number} [userCount] - Optional user count to update
- */
+
 export function updateRoomInfo(roomName, userCount) {
   const elements = getElements();
 

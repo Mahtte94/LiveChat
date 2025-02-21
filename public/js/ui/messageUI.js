@@ -4,10 +4,7 @@ import { getElements } from "./elements.js";
 import { getState, hasMessage, cacheMessage } from "../store/appState.js";
 import { getSocket } from "../config/socketConfig.js";
 
-/**
- * Add a message to the display
- * @param {Object} msg - The message object to display
- */
+
 export function addMessageToDisplay(msg) {
   const elements = getElements();
   const socket = getSocket();
@@ -79,10 +76,7 @@ export function addMessageToDisplay(msg) {
   elements.messagesContainer.appendChild(item);
 }
 
-/**
- * Remove a message from the display
- * @param {string} messageId - The ID of the message to remove
- */
+
 export function removeMessageFromDisplay(messageId) {
   const elements = getElements();
 

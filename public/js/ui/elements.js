@@ -22,11 +22,7 @@ const elements = {
   messageInput: document.getElementById("input"),
 };
 
-/**
- * Get DOM elements object or a specific element
- * @param {string} [elementName] - Optional element name to get specific element
- * @returns {Object|HTMLElement} - All elements or the requested element
- */
+
 export function getElements(elementName) {
   if (elementName) {
     return elements[elementName];
@@ -34,10 +30,7 @@ export function getElements(elementName) {
   return elements;
 }
 
-/**
- * Validate that all required DOM elements exist
- * @throws {Error} If any required elements are missing
- */
+
 export function validateElements() {
   const requiredElements = [
     "roomSelection",

@@ -2,10 +2,7 @@
 
 let socketInstance = null;
 
-/**
- * Initialize the Socket.IO connection with configuration
- * @returns {Object} The Socket.IO instance
- */
+
 export function initSocket() {
   // Create singleton socket instance
   if (!socketInstance) {
@@ -20,10 +17,7 @@ export function initSocket() {
   return socketInstance;
 }
 
-/**
- * Get the existing Socket.IO instance
- * @returns {Object} The Socket.IO instance
- */
+
 export function getSocket() {
   if (!socketInstance) {
     // Initialize if it doesn't exist yet
@@ -32,10 +26,7 @@ export function getSocket() {
   return socketInstance;
 }
 
-/**
- * Connect to the socket server if not already connected
- * @returns {Object} The Socket.IO instance
- */
+
 export function connectSocket() {
   const socket = getSocket();
 

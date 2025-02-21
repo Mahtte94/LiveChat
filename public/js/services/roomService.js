@@ -37,11 +37,7 @@ export function loadRooms() {
     });
 }
 
-/**
- * Join a chat room
- * @param {string} roomId - The ID of the room to join
- * @param {string} [roomName] - Optional room name (if already known)
- */
+
 export function joinRoom(roomId, roomName) {
   const elements = getElements();
   const state = getState();
@@ -111,10 +107,7 @@ function joinRoomAfterConnection(socket, roomId, roomName, username) {
   });
 }
 
-/**
- * Create a new chat room
- * @param {string} roomName - The name for the new room
- */
+
 export function createRoom(roomName) {
   if (!roomName) {
     alert("Please enter a room name");
@@ -143,10 +136,7 @@ export function createRoom(roomName) {
     });
 }
 
-/**
- * Handle room users update event
- * @param {Object} data - The update data with roomId and userCount
- */
+
 export function handleRoomUsersUpdate(data) {
   const state = getState();
 
@@ -156,10 +146,7 @@ export function handleRoomUsersUpdate(data) {
   }
 }
 
-/**
- * Set up room-related event listeners
- * @param {Object} socket - The Socket.IO instance
- */
+
 export function setupRoomEventListeners(socket) {
   const elements = getElements();
 

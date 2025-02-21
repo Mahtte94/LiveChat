@@ -19,10 +19,7 @@ import {
 import { emitEvent } from "./socketService.js";
 import { getSocket } from "../config/socketConfig.js";
 
-/**
- * Handle new chat message event
- * @param {Object} message - The message object from the server
- */
+
 export function handleChatMessage(message) {
   const state = getState();
 
@@ -44,10 +41,7 @@ export function handleChatMessage(message) {
   scrollToBottom();
 }
 
-/**
- * Handle chat history event
- * @param {Array} messages - The array of message objects from the server
- */
+
 export function handleChatHistory(messages) {
   const state = getState();
 
@@ -105,10 +99,7 @@ export function setupEmptyStateTimeout() {
   }
 }
 
-/**
- * Handle message deleted event
- * @param {string} messageId - The ID of the deleted message
- */
+
 export function handleMessageDeleted(messageId) {
   console.log("Message deleted event received:", messageId);
 
@@ -134,10 +125,7 @@ export function handleMessageCleared() {
   showNoMessagesState();
 }
 
-/**
- * Send a new chat message
- * @param {string} content - The message content
- */
+
 export function sendMessage(content) {
   if (!content) return;
 

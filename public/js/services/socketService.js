@@ -9,10 +9,7 @@ import {
 } from "./messageService.js";
 import { handleRoomUsersUpdate } from "./roomService.js";
 
-/**
- * Set up all Socket.IO event listeners
- * @param {Object} socket - The Socket.IO instance
- */
+
 export function setupSocketListeners(socket) {
   // Connection events
 
@@ -43,13 +40,7 @@ export function setupSocketListeners(socket) {
   });
 }
 
-/**
- * Emit a socket event with optional acknowledgment callback
- * @param {Object} socket - The Socket.IO instance
- * @param {string} eventName - Event name to emit
- * @param {any} data - Data to send with the event
- * @param {Function} [callback] - Optional callback for acknowledgment
- */
+
 export function emitEvent(socket, eventName, data, callback) {
   if (socket && socket.connected) {
     socket.emit(eventName, data, callback);
