@@ -58,7 +58,7 @@ export function updateRoomInfo(roomName, userCount) {
   }
 
   if (userCount !== undefined) {
-    elements.onlineCount.textContent = `${userCount} online`;
+    elements.onlineCount.textContent = userCount;
   }
 }
 
@@ -67,9 +67,11 @@ export function updateRoomInfo(roomName, userCount) {
  */
 export function showChatUI() {
   const elements = getElements();
+  const chatWrapper = document.querySelector('.chat-wrapper');
   elements.roomSelection.style.display = "none";
   elements.chatContainer.style.display = "flex";
-  elements.currentRoomElement.style.display = "flex";
+  chatWrapper.classList.add('visible');
+      
 }
 
 /**
