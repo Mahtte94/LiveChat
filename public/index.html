@@ -29,27 +29,27 @@
       </div>
     </div>
 
-   <!-- Chat UI (hidden initially) -->
-<div class="chat-wrapper">
-  <div class="chat-top-bar">
-    <div class="room-info">
+    <div class="current-room" id="current-room" style="display: none">
+      <span>Room:&nbsp</span>
       <span id="current-room-name"></span>
-      <span id="online-count">0</span>
     </div>
-    <div class="room-actions">
-      <select id="room-switcher">
-        <option value="">Switch Room</option>
-      </select>
+    <!-- Chat UI (hidden initially) -->
+    <div id="chat-container" class="chat-container" style="display: none">
+     
+      <ul id="messages"></ul>
+      <div class="chat-header">
+        
+        <div class="room-actions">
+          <select id="room-switcher">
+            <option value="">Switch Room</option>
+          </select>
+          <span id="online-count">0 online</span>
+        </div>
+      </div>
+      <form id="form" action="">
+        <input id="input" autocomplete="off" /><button>Send</button>
+      </form>
     </div>
-  </div>
-  
-  <div id="chat-container">
-    <ul id="messages"></ul>
-    <form id="form" action="">
-      <input id="input" autocomplete="off" /><button>Send</button>
-    </form>
-  </div>
-</div>
     <script src="chat.js"></script>
   </body>
 </html>

@@ -81,11 +81,12 @@ function updateRoomSwitcher(rooms) {
 }
 
 function joinRoom(roomId, roomName) {
-  username = usernameInput.value.trim() || `Guest_${Math.floor(Math.random() * 10000)}`;
+  username =
+    usernameInput.value.trim() || `Guest_${Math.floor(Math.random() * 10000)}`;
 
   // If we're already connected, leave current room first
   if (socket.connected && currentRoom) {
-    socket.emit('leave room', currentRoom);
+    socket.emit("leave room", currentRoom);
   }
 
   // Connect if not already connected
@@ -95,41 +96,47 @@ function joinRoom(roomId, roomName) {
 
   // Update room and reset state
   currentRoom = roomId;
-  messageCache.clear();
+  messageCache.clear(); // Clear message cache when changing rooms
 
-  // Show loading state
+  // Show UI
+  roomSelection.style.display = "none";
+  chatContainer.style.display = "flex";
+
+  // Set up empty messages container with loading state
   showLoadingState();
 
   // Join the room
-  socket.emit('join room', { roomId, username }, (response) => {
+  socket.emit("join room", { roomId, username }, (response) => {
     if (response.success) {
-      // Hide room selection and show chat interface
-      roomSelection.style.display = 'none';
-      
-      // Show chat wrapper and chat container
-      const chatWrapper = document.querySelector('.chat-wrapper');
-      chatWrapper.classList.add('visible');
-      chatContainer.style.display = 'flex';
-      
+      // Update UI to show chat interface
+      roomSelection.style.display = "none";
+      chatContainer.style.display = "flex";
+      thisRooms.style.display = "flex";
       // Update room name display
       currentRoomName.textContent = response.roomName || roomName;
+
+      // If we don't know the room name yet, set it from response
+      if (!roomName && response.roomName) {
+        roomName = response.roomName;
+      }
 
       // Update online count
       updateOnlineCount(response.userCount || 1);
 
-      // Set timeout for no messages state
+      // Set a timeout to show "no messages" if we don't get any history
       setTimeout(() => {
-        if (messages.childElementCount === 1 && messages.firstChild.id === 'loading-messages') {
+        if (
+          messages.childElementCount === 1 &&
+          messages.firstChild.id === "loading-messages"
+        ) {
           showNoMessagesState();
         }
       }, 3000);
     } else {
-      alert('Failed to join room: ' + (response.error || 'Unknown error'));
-      // Keep room selection visible
-      roomSelection.style.display = 'block';
-      const chatWrapper = document.querySelector('.chat-wrapper');
-      chatWrapper.classList.remove('visible');
-      chatContainer.style.display = 'none';
+      alert("Failed to join room: " + (response.error || "Unknown error"));
+      // Go back to room selection
+      roomSelection.style.display = "block";
+      chatContainer.style.display = "none";
     }
   });
 }
@@ -186,7 +193,7 @@ function createRoom() {
 }
 
 function updateOnlineCount(count) {
-  onlineCount.textContent = count;
+  onlineCount.textContent = `${count} online`;
 }
 
 // Event listeners
