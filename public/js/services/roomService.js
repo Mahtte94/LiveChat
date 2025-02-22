@@ -1,5 +1,4 @@
 // roomService.js - Room operations and event handlers
-// roomService.js - Room operations and event handlers
 
 import { getState, setState, clearMessageCache } from "../store/appState.js";
 import { getElements } from "../ui/elements.js";
