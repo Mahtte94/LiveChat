@@ -97,6 +97,7 @@ function joinRoomAfterConnection(socket, roomId, roomName, username) {
 
       // Update room info
       updateRoomInfo(displayName, response.userCount || 1);
+      
     } else {
       console.error("Failed to join room:", response.error);
       alert("Failed to join room: " + (response.error || "Unknown error"));
