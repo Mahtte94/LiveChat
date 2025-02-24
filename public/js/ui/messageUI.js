@@ -4,7 +4,6 @@ import { getElements } from "./elements.js";
 import { getState, hasMessage, cacheMessage } from "../store/appState.js";
 import { getSocket } from "../config/socketConfig.js";
 
-
 export function addMessageToDisplay(msg) {
   const elements = getElements();
   const socket = getSocket();
@@ -12,6 +11,11 @@ export function addMessageToDisplay(msg) {
   // Skip invalid messages
   if (!msg || !msg.content) {
     console.error("Invalid message format", msg);
+    return;
+  }
+
+  if (msg.content.length > 255) {
+    console.error("Message must be under 255 characters.");
     return;
   }
 
@@ -75,7 +79,6 @@ export function addMessageToDisplay(msg) {
   // Add message to container
   elements.messagesContainer.appendChild(item);
 }
-
 
 export function removeMessageFromDisplay(messageId) {
   const elements = getElements();

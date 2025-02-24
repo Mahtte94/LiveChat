@@ -19,11 +19,9 @@ import {
 import { emitEvent } from "./socketService.js";
 import { getSocket } from "../config/socketConfig.js";
 
-
 export function handleChatMessage(message) {
   const state = getState();
 
-  // Skip if not for current room
   if (!message || message.roomId !== state.currentRoom) {
     return;
   }
@@ -40,7 +38,6 @@ export function handleChatMessage(message) {
   addMessageToDisplay(message);
   scrollToBottom();
 }
-
 
 export function handleChatHistory(messages) {
   const state = getState();
@@ -99,7 +96,6 @@ export function setupEmptyStateTimeout() {
   }
 }
 
-
 export function handleMessageDeleted(messageId) {
   console.log("Message deleted event received:", messageId);
 
@@ -125,7 +121,6 @@ export function handleMessageCleared() {
   showNoMessagesState();
 }
 
-
 export function sendMessage(content) {
   if (!content) return;
 
@@ -141,8 +136,8 @@ export function sendMessage(content) {
   };
 
   emitEvent(socket, "chat message", messageData, (error) => {
-    if (error) {
-      console.error("Error sending message:", error);
+    if (content.length > 255) {
+      alert("Message must be under 255 characters");
     }
   });
 }

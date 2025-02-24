@@ -90,9 +90,15 @@ export function setupSocketHandlers(io, db) {
 
     socket.on("chat message", async (msg, callback) => {
       try {
-        // Validate message has required fields
+        // Validate message has required fields and is under the message length
+        const messageLengthLimit = 255;
         if (!msg.content || !msg.roomId) {
           return callback && callback("Invalid message format");
+        } else if (msg.content.length > messageLengthLimit) {
+          return (
+            callback &&
+            callback(`Message must be under ${messageLengthLimit} long.`)
+          );
         }
 
         console.log(

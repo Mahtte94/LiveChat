@@ -110,6 +110,12 @@ export function createRoom(roomName) {
     alert("Please enter a room name");
     return;
   }
+
+  if (roomName.length > 30) {
+    alert("Room name must be under 30 characters.");
+    return;
+  }
+
   fetch("/rooms", {
     method: "POST",
     headers: {
