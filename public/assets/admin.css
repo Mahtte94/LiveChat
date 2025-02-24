@@ -71,3 +71,21 @@
   padding: 8px;
   min-width: 200px;
 }
+
+.message-list {
+  display: flex;
+  flex-wrap: wrap;
+  text-wrap: wrap;
+  padding: 1rem 0;
+  gap: 1rem;
+  word-break: break-all;
+}
+
+.message-item {
+  max-width: 25%;
+  line-height: 1.4rem;
+}
+
+.message-item > div > * {
+  width: fit-content;
+}
