@@ -36,7 +36,6 @@ export function loadRooms() {
     });
 }
 
-
 export function joinRoom(roomId, roomName) {
   const elements = getElements();
   const state = getState();
@@ -97,7 +96,6 @@ function joinRoomAfterConnection(socket, roomId, roomName, username) {
 
       // Update room info
       updateRoomInfo(displayName, response.userCount || 1);
-      
     } else {
       console.error("Failed to join room:", response.error);
       alert("Failed to join room: " + (response.error || "Unknown error"));
@@ -107,13 +105,11 @@ function joinRoomAfterConnection(socket, roomId, roomName, username) {
   });
 }
 
-
 export function createRoom(roomName) {
   if (!roomName) {
     alert("Please enter a room name");
     return;
   }
-
   fetch("/rooms", {
     method: "POST",
     headers: {
@@ -123,6 +119,10 @@ export function createRoom(roomName) {
   })
     .then((response) => response.json())
     .then((data) => {
+      if (roomName.length > 30) {
+        alert("Room name is too long!");
+        return;
+      }
       if (data.success) {
         joinRoom(data.roomId, roomName);
         loadRooms(); // Refresh room list
@@ -136,7 +136,6 @@ export function createRoom(roomName) {
     });
 }
 
-
 export function handleRoomUsersUpdate(data) {
   const state = getState();
 
@@ -145,7 +144,6 @@ export function handleRoomUsersUpdate(data) {
     updateRoomInfo(null, data.userCount);
   }
 }
-
 
 export function setupRoomEventListeners(socket) {
   const elements = getElements();
