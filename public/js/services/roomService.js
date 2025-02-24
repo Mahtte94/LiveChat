@@ -111,8 +111,8 @@ export function createRoom(roomName) {
     return;
   }
 
-  if (roomName.length > 30) {
-    alert("Room name must be under 30 characters.");
+  if (roomName.length > 25) {
+    alert("Room name must be under 25 characters.");
     return;
   }
 
